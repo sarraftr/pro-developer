@@ -65,8 +65,8 @@
     ],
     "primary": {
       "type": "button",
-      "label": "Panel",
-      "href": "https://core.sarraf.pro"
+      "label": "SarrafPro",
+      "href": "https://sarraf.pro"
     }
   },
   "contextual": {
