@@ -3,11 +3,11 @@
   "theme": "almond",
   "name": "Sarraf Pro Developer",
   "colors": {
-    "primary": "#16A34A",
-    "light": "#07C983",
-    "dark": "#15803D"
+    "primary": "#1B2C75",
+    "light": "#2A3FA0",
+    "dark": "#8FA3F5"
   },
-  "favicon": "/favicon.svg",
+  "favicon": "/favicon.png",
   "navigation": {
     "pages": [
       {
