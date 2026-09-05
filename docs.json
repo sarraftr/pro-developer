@@ -18,13 +18,28 @@
         ]
       },
       {
-        "group": "API Referansı",
+        "group": "API'ye Giriş",
         "pages": [
-          "api-reference/genel-bakis",
-          "api-reference/musteriler",
+          "api-reference/genel-bakis"
+        ]
+      },
+      {
+        "group": "Müşteriler",
+        "pages": [
+          "api-reference/musteriler"
+        ]
+      },
+      {
+        "group": "Banka Entegrasyonu",
+        "pages": [
           "api-reference/banka-hesaplari",
           "api-reference/banka-hareketleri",
-          "api-reference/banka-sorgu-tetikleme",
+          "api-reference/banka-sorgu-tetikleme"
+        ]
+      },
+      {
+        "group": "Faturalar",
+        "pages": [
           "api-reference/faturalar"
         ]
       },
