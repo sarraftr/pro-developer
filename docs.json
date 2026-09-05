@@ -47,6 +47,12 @@
             ]
           },
           {
+            "group": "Giderler",
+            "pages": [
+              "api-reference/giderler"
+            ]
+          },
+          {
             "group": "Uyum (Compliance)",
             "pages": [
               "api-reference/musteri-tani-formlari",

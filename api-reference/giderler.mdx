@@ -1,0 +1,47 @@
+---
+title: "Giderler"
+description: "Gider pusulası kayıtları — belge, mahiyet ve kalem satırlarıyla"
+---
+
+Giderler kaynağı, şirketinizin gider pusulası kayıtlarını sunar. Bu sürümde **yalnızca görüntüleme** vardır; gider oluşturma API'de yoktur.
+
+## `GET /v1/expenses` — gider listesi
+
+### Sorgu parametreleri
+
+Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[idNo]` | string | Müşteri TCKN/VKN tam eşleşme |
+| `filter[serial]` / `filter[number]` | string | Belge seri / numarası |
+| `filter[bankCode]` | string | Banka kodu |
+| `filter[isCheck]` | boolean | Mahsup/pusula durumu |
+| `filter[isExcel]` | boolean | Excel ile yüklenenler |
+| `filter[formalized]` | boolean | `true`: yalnız resmileşmiş (`printStamp` olan) kayıtlar |
+| `filter[startDate]` / `filter[endDate]` | date-time | `transactionDate` aralığı |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+| `q` | string | Numerikse `idNo`, metinse ünvan araması |
+
+Sıralama whitelist'i: `transactionDate`, `createdAt`, `updatedAt`, `amount`. Varsayılan `transactionDate:asc`.
+
+### Cevap alanları (liste öğesi)
+
+`id`, `stamp`, `serial`, `number`, `transactionDate`, `amount`, `exchanges`, `quantity`, `unitName`, `attribute` (mahiyet), `idNo`, `nameSurname`, `bankName`, `bankCode`, `isCheck`, `isExcel`, `printStamp`, `printDate`, `createdDate`, `updatedAt`
+
+## `GET /v1/expenses/{id}` — gider detayı
+
+Liste alanlarına ek olarak:
+
+| Alan | Anlam |
+|---|---|
+| `description`, `address` | Açıklama ve adres |
+| `customerInfo` | Müşteri bilgi bloğu |
+| `lines[]` | Kalem satırları: `quantity`, `attribute`, `unitName`, `price`, `amount`, `description`, `stockCode`, `stamp`, `bankCode` |
+| `invoiceNo` | Takas ise ilgili fatura numaraları |
+| `isSwap`, `vSchema`, `currentCode` | Takas ve şema bilgileri |
+| `bankTransactionId` | İlgili banka hareketi — [Banka hareketi detayı](/api-reference/banka-hareketleri) ile çapraz sorgulanabilir |
+
+<Note>
+  Gider pusulası oluşturma bu sürümde API'de yoktur — yalnızca görüntüleme.
+</Note>

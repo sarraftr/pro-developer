@@ -57,73 +57,13 @@ Liste alanlarına ek olarak:
   Fatura modelinde para birimi alanı tutulmaz; tutarlar kayıtlı haliyle döner. Fatura PDF/görsel içeriği bu sürümde API'de yoktur.
 </Note>
 
-## `POST /v1/invoices` — fatura oluşturma
-
-Banka hareketinden veya manuel olarak fatura oluşturur. Şirketinizin entegratör (e-fatura) ayarları ve kalem şablonları (variables) kullanılır; e-arşiv/e-fatura yönlendirmesi müşterinin VKN/TCKN kaydına göre otomatik yapılır.
-
-### İstek gövdesi
-
-Banka hareketinden:
-
-```json
-{
-  "data": {
-    "source": { "type": "bank-transaction", "bankTransactionId": "6a42a5a5afed5527f1074a31" },
-    "variables": { "id": "6a2f1b989691a108a13ad1ef" },
-    "isDraft": true
-  }
-}
-```
-
-Manuel:
-
-```json
-{
-  "data": {
-    "source": { "type": "manual" },
-    "customer": { "idNo": "12345678901", "nameSurname": "ÖRNEK KİŞİ", "iban": "TR..." },
-    "amount": 125000,
-    "description": "Manuel fatura notu",
-    "isDraft": true
-  }
-}
-```
-
-| Alan | Tür | Kural |
-|---|---|---|
-| `source.type` | string | `bank-transaction` veya `manual` (zorunlu) |
-| `source.bankTransactionId` | string | `bank-transaction` türünde zorunlu; hareket şirketinize ait olmalı |
-| `customer` | object | `manual` türünde zorunlu (`idNo`, `nameSurname`, `iban`); `bank-transaction` türünde hareketteki müşteriyi ezmek için opsiyonel |
-| `amount` | number | `manual` türünde zorunlu, pozitif |
-| `variables` | object | Kalem şablonu: yalnızca `id` **veya** `key` — [şablon listesi](#get-v1invoice-variables-—-kalem-şablonları) |
-| `isDraft` | boolean | `true`: entegratörde **taslak** oluşur; envanter, hareket güncellemesi ve cari upsert yapılmaz |
-| `currency` / `exchangeRate` | string / number | Varsayılan `TRY`; başka para biriminde `exchangeRate` zorunlu |
-| `description` / `transactionDate` | string | Fatura notu / fatura tarihi (ISO-8601) |
-
-### Cevap — `201`
-
-```json
-{
-  "success": true,
-  "data": {
-    "uuid": "0075cc68-e90b-49c2-8434-0d5f779c72bf",
-    "invoiceNumber": "BAC2026000006543",
-    "invoiceType": "earchive",
-    "isDraft": true,
-    "customerTaxNumber": "12345678901",
-    "source": { "type": "manual", "bankTransactionId": null }
-  },
-  "meta": { "requestId": "...", "timestamp": "..." }
-}
-```
-
-<Warning>
-  `isDraft: false` ile oluşturma **gerçek** fatura gönderir ve şu yan etkileri üretir: cari kayıt eşleştirme/oluşturma, envanter fişi ve (banka hareketi kaynaklıysa) hareketin `faturalandı` olarak işaretlenmesi. Zaten faturalanmış hareket `409 CONFLICT` döner. Entegratör hataları `502 UPSTREAM_ERROR` döner.
-</Warning>
+<Note>
+  Bu sürümde faturalar **yalnızca görüntülenebilir**; fatura oluşturma/gönderme API'de yoktur.
+</Note>
 
 ## `GET /v1/invoice-variables` — kalem şablonları
 
-Şirketinizin fatura kalem şablonları (ayar/saflık/işçilik tanımları). `POST /v1/invoices` içindeki `variables.id` seçimini bu listeden yapın; `isDefault: true` olan şablon seçim yapılmadığında kullanılır.
+Şirketinizin fatura kalem şablonlarını (ayar/saflık/işçilik tanımları) görüntüler. Varsayılan listede pasif/silinmiş şablonlar dönmez.
 
 ### Sorgu parametreleri
 
