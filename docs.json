@@ -11,24 +11,43 @@
   "navigation": {
     "pages": [
       {
-        "group": "Getting Started",
+        "group": "Başlangıç",
         "pages": [
           "index",
           "quickstart"
+        ]
+      },
+      {
+        "group": "API Referansı",
+        "pages": [
+          "api-reference/genel-bakis",
+          "api-reference/musteriler",
+          "api-reference/banka-hesaplari",
+          "api-reference/banka-hareketleri",
+          "api-reference/banka-sorgu-tetikleme",
+          "api-reference/faturalar"
+        ]
+      },
+      {
+        "group": "Uyum (Compliance)",
+        "pages": [
+          "api-reference/musteri-tani-formlari",
+          "api-reference/kimlik-belgeleri",
+          "api-reference/yaptirim-sorgulari"
         ]
       }
     ],
     "global": {
       "anchors": [
         {
-          "anchor": "Documentation",
-          "href": "https://mintlify.com/docs",
-          "icon": "book-open-cover"
+          "anchor": "SarrafPro",
+          "href": "https://sarraf.pro",
+          "icon": "gem"
         },
         {
-          "anchor": "Blog",
-          "href": "https://mintlify.com/blog",
-          "icon": "newspaper"
+          "anchor": "Destek",
+          "href": "mailto:destek@sarraf.pro",
+          "icon": "headset"
         }
       ]
     }
@@ -46,8 +65,8 @@
     ],
     "primary": {
       "type": "button",
-      "label": "Dashboard",
-      "href": "https://app.mintlify.com"
+      "label": "Panel",
+      "href": "https://core.sarraf.pro"
     }
   },
   "contextual": {

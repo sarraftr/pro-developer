@@ -1,0 +1,74 @@
+---
+title: "Banka hareketleri"
+description: "Gelen/giden banka hareketlerini okuyun; detayda MASAK sorgu sonucu gömülü döner"
+---
+
+Banka hareketleri, şirketin entegre banka hesaplarına düşen tüm gelen/giden işlemlerdir. Detay ucunda hareketin **MASAK sorgu sonucu** gömülü olarak döner.
+
+## `GET /v1/bank-transactions` — hareket listesi
+
+### Sorgu parametreleri
+
+Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[incoming]` | boolean | `true`: yalnız gelen, `false`: yalnız giden hareketler |
+| `filter[status]` | integer | `0` bekleyen, `1` işlem yapıldı, `2` yok sayıldı |
+| `filter[masakStatus]` | integer | `0` sorgulanmadı, `1` sorun yok, `2` sorunlu — sorunlu işlemler için `2` kullanın |
+| `filter[idNo]` | string | Gönderici TCKN/VKN tam eşleşme |
+| `filter[currency]` | string | Para birimi (büyük harfe normalize edilir) |
+| `filter[bankCode]` | string | Banka kodu |
+| `filter[startDate]` / `filter[endDate]` | date-time | `transactionDate` aralığı (dönem çekimi için) |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+
+Sıralama whitelist'i: `transactionDate`, `createdDate`, `updatedAt`, `amount`. Varsayılan `transactionDate:asc`.
+
+### Cevap alanları (liste öğesi)
+
+`id`, `stamp` (benzersiz işlem damgası), `incoming`, `transactionDate`, `amount`, `currency`, `exchangeRate`, `balance` (işlem sonrası bakiye), `bankCode`, `code` (EFT vb.), `idNo`, `nameSurname`, `iban`, `description`, `status`, `masakStatus`, `fundsNature` (işlemin mahiyeti), `isCheck` (mahsup/gider pusulası durumu), `invoiceNumber`, `createdDate`, `updatedAt`
+
+## `GET /v1/bank-transactions/{id}` — hareket detayı
+
+Liste alanlarına ek olarak `comment` (sarraf notu), `summaryInfo`, `expenseData` ve tam `invoiceInfo` döner; ayrıca gömülü **`masak`** bölümü bulunur.
+
+### Gömülü `masak` bölümü
+
+Hareketin göndericisine (`idNo`) ait **en son** MASAK/WANTED/PEP sorgu kaydı detay cevabına eklenir:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6a42a5a5afed5527f1074a31",
+    "amount": 125000,
+    "currency": "TRY",
+    "idNo": "1976926558",
+    "masakStatus": 1,
+    "masak": {
+      "status": 1,
+      "lastQueriedAt": "2026-09-04T18:22:10.000Z",
+      "types": ["masak"],
+      "isError": false,
+      "data": null
+    }
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+| Alan | Anlam |
+|---|---|
+| `masak.status` | `0` sorgulanmadı, `1` sorun yok, `2` sorunlu |
+| `masak.lastQueriedAt` | En son sorgu zamanı; hiç sorgulanmadıysa `null` |
+| `masak.types` | Çalıştırılan sorgu türleri (`masak`, `wanted`, `pep`) |
+| `masak.isError` | Sorgu hata ile mi sonuçlandı |
+| `masak.data` | Yaptırım listesi eşleşme içeriği (varsa) |
+
+<Note>
+  Ayrı bir "masak durumu" ucu yoktur; liste ucunda `filter[masakStatus]=2` ile sorunlu hareketleri çekebilir, detayda tam sorgu özetini okuyabilirsiniz. Tam sorgu geçmişi için [Yaptırım sorguları](/api-reference/yaptirim-sorgulari) kaynağına bakın.
+</Note>
+
+<Warning>
+  Ham banka yükleri ve iç entegrasyon alanları (`bankData`, `aiData`, `pusulaData` vb.) hiçbir uçta dönmez.
+</Warning>

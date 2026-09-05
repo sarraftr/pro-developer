@@ -1,0 +1,80 @@
+---
+title: "Yaptırım sorguları"
+description: "MASAK / wanted sorgusu tetikleyin ve tam sorgu geçmişini okuyun"
+---
+
+Yaptırım sorguları kaynağı iki yönlüdür: **sorgu tetikleme** (yazma) ve **sorgu geçmişi** (okuma). Tetiklenen her sorgu otomatik olarak geçmişe düşer.
+
+## `POST /v1/compliance/sanction-checks` — sorgu tetikleme
+
+Verilen kimlik numarasını MASAK yaptırım listesinde; ad soyad verilmişse ayrıca wanted listesinde (Türkçe duyarlı eşleşme ile) sorgular. Sonuç log kaydı olarak yazılır ve eşleşme içerikleriyle birlikte döner.
+
+### İstek gövdesi
+
+```json
+{
+  "data": {
+    "idNo": "1976926558",
+    "nameSurname": "ÖRNEK KİŞİ"
+  }
+}
+```
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `data.idNo` | string | **Zorunlu** — sorgulanacak TCKN/VKN/belge numarası |
+| `data.nameSurname` | string | Opsiyonel — verilirse wanted listesi de sorgulanır; verilmezse wanted atlanır |
+
+### Cevap — `201`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6a9c793bfd4be6d9b9a279e7",
+    "idNo": "1976926558",
+    "types": ["masak", "wanted"],
+    "isError": false,
+    "matches": { "masak": [], "wanted": [] },
+    "checkedAt": "2026-09-05T20:19:07.875Z"
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+| Alan | Anlam |
+|---|---|
+| `id` | Oluşan sorgu kaydının kimliği (geçmişte bu id ile okunur) |
+| `types` | Çalıştırılan sorgu türleri |
+| `isError` | Herhangi bir listede eşleşme bulundu mu |
+| `matches.masak` / `matches.wanted` | Eşleşme içerikleri (yaptırım listesi kayıtları) |
+
+<Note>
+  Sorgu kaydına `userId` olarak tetikleyen API kullanıcısının kimliği yazılır — denetim izi korunur.
+</Note>
+
+## `GET /v1/compliance/sanction-checks` — sorgu geçmişi
+
+Şirkete ait tüm yaptırım sorgu kayıtlarını (otomatik taramalar + manuel/API sorguları) listeler. Varsayılan sıralama **en yeni önce** (`createdAt:desc`).
+
+### Sorgu parametreleri
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[idNo]` | string | Sorgulanan TCKN/VKN (ana filtre) |
+| `filter[type]` | string | `masak`, `wanted`, `pep` |
+| `filter[isError]` | boolean | Hatalı sorgulara göre filtre |
+| `filter[startDate]` / `filter[endDate]` | date-time | `createdAt` aralığı |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+
+### Cevap alanları (liste öğesi)
+
+`id`, `idNo`, `types`, `isError`, `createdAt`, `updatedAt`
+
+## `GET /v1/compliance/sanction-checks/{id}` — sorgu detayı
+
+Liste alanlarına ek olarak **`data`** döner: sorgunun tam sonucu (yaptırım listesi eşleşme içeriği).
+
+<Tip>
+  Banka hareketleri için sorgu sonucunu ayrıca çekmenize gerek yoktur — hareket detayında [gömülü `masak` bölümü](/api-reference/banka-hareketleri) zaten en son sorguyu özetler.
+</Tip>

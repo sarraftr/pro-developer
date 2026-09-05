@@ -1,0 +1,47 @@
+---
+title: "Kimlik belgeleri"
+description: "Müşteri kimlik belge kayıtları — doğrulama durumu, kanal ve geçerlilik"
+---
+
+Kimlik belge kayıtları, müşterilere ait yüklenmiş belgelerin (kimlik ön/arka, imza, ikametgâh, vergi levhası vb.) doğrulama durumunu izler. Belge **içeriği** API'de dönmez; kayıt ve doğrulama durumu döner.
+
+## `GET /v1/compliance/identity-documents` — belge listesi
+
+### Sorgu parametreleri
+
+Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[idNo]` | string | Belge sahibi TCKN/VKN |
+| `filter[type]` | string | `front`, `rear`, `accord`, `signature`, `addressDoc`, `activeDoc`, `registryDoc`, `taxDoc`, `signDoc` |
+| `filter[channel]` | string | Yükleme kanalı: `manual`, `whatsapp`, `idv`, `accord` |
+| `filter[idCheck]` | boolean | NVİ kimlik doğrulaması geçti mi |
+| `filter[isApproval]` | boolean | idNo doğrulaması yapıldı mı |
+| `filter[isDisabled]` | boolean | Verilmezse yalnız **geçerli** belgeler döner |
+| `filter[startDate]` / `filter[endDate]` | date-time | `createdAt` aralığı |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+
+Sıralama whitelist'i: `createdAt`, `updatedAt`, `validityDate`. Varsayılan `createdAt:asc`.
+
+### Cevap alanları (liste öğesi)
+
+| Alan | Anlam |
+|---|---|
+| `id` | Belge kayıt kimliği |
+| `idNo` | Belge sahibi TCKN/VKN |
+| `type` | Belge türü |
+| `channel` | Yükleme kanalı |
+| `fileType` | Dosya türü |
+| `validityDate` | Belge geçerlilik tarihi |
+| `idCheck` | NVİ doğrulaması geçti mi |
+| `isApproval` | idNo doğrulaması yapıldı mı |
+| `isDisabled` | Belge geçersiz mi |
+
+## `GET /v1/compliance/identity-documents/{id}` — belge detayı
+
+Liste alanlarına ek olarak `description` ve **`data`** (OCR / doğrulama çıkarım sonucu) döner.
+
+<Warning>
+  Görsel referansları (`imageUrl`, `imageId` vb.) ve AI ham çıktıları hiçbir uçta dönmez. Belge içeriği indirme ucu bu sürümde yoktur.
+</Warning>

@@ -1,0 +1,47 @@
+---
+title: "Müşteri tanı formları"
+description: "KYC / müşteri tanı formu kayıtları — onay, imza ve MASAK durumuyla"
+---
+
+Müşteri tanı formları (Accord doğrulama kayıtları), müşterinin kimlik ve KYC bilgilerinin toplandığı resmi kayıtlardır. API'den [müşteri oluşturma](/api-reference/musteriler) ucuyla yaratılan kayıtlar da bu kaynağa düşer ve buradan izlenir.
+
+## `GET /v1/compliance/verifications` — form listesi
+
+### Sorgu parametreleri
+
+Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[idNo]` | string | TCKN/VKN tam eşleşme |
+| `filter[idType]` | string | `person` veya `company` |
+| `filter[idCardType]` | string | `idCard`, `passport`, `dlCard`, `other` (legacy kapsamalı) |
+| `filter[isApproval]` | boolean | Form onay durumu |
+| `filter[isSigned]` | boolean | İmza durumu |
+| `filter[isDeleted]` | boolean | Verilmezse yalnız **silinmemiş** formlar döner |
+| `filter[masakStatus]` | integer | `0` sorgulanmadı, `1` sorun yok, `2` sorunlu |
+| `filter[startDate]` / `filter[endDate]` | date-time | `createdAt` aralığı |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+| `q` | string | Numerikse `idNo`, metinse ünvan araması |
+
+Sıralama whitelist'i: `createdAt`, `updatedAt`, `nameSurname`. Varsayılan `createdAt:asc`.
+
+### Cevap alanları (liste öğesi)
+
+`id`, `idNo`, `idType`, `idCardType`, `nameSurname`, `phone`, `email`, `nationality`, `countries`, `states`, `cities`, `masakStatus`, `isApproval`, `isSigned`, `onlyInvoice`, `contractVersion`, `createdAt`, `updatedAt`
+
+## `GET /v1/compliance/verifications/{id}` — form detayı
+
+Liste alanlarına ek olarak:
+
+| Alan grubu | İçerik |
+|---|---|
+| Kimlik/iletişim | `birthplace`, `birthday`, `phone2`, `taxOffice`, `registryNo`, `activityName`, `naceCode`, `iban`, `address`, `motherName`, `fatherName`, `isAbroad`, `jobName` |
+| `customerRelation` | Kurumsal kayıtta temsilci/ortak/gerçek faydalanıcı (`representative`, `shareholder`, `beneficialOwner`) |
+| `companyDocuments` | Kurumsal belgelerin **metası** — `fileName`, `mimeType`, `size` (içerik dönmez) |
+| `requirementsSnapshot` | Formun doldurulduğu andaki zorunluluk ayarlarının anlık görüntüsü |
+| `isDeleted` | Formun silinme durumu (detayda görünür) |
+
+<Warning>
+  Form görselleri ve belge içerikleri (`frontImage`, `signatureImage`, `addressDoc` vb.), SMS kodları ve onay kilidi gibi iç alanlar hiçbir uçta dönmez.
+</Warning>

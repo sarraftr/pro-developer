@@ -1,47 +1,70 @@
 ---
 title: "Quickstart"
-description: "Begin with a guide on the fastest path to a successful outcome"
+description: "SarrafPro Dış API'ye ilk isteğinizi birkaç dakikada atın"
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+Bu rehber sizi sıfırdan ilk başarılı API cevabına ulaştırır: API anahtarı üretimi, kimlik doğrulama ve ilk `GET` isteği.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+## Ön koşullar
 
-## Prerequisites
+- Aktif bir SarrafPro şirket hesabı (Enterprise paketi)
+- Şirket panelinde API anahtarı üretme yetkisi
 
-Before you begin, you must have:
-
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+## Başlayın
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="API anahtarı üretin">
+    SarrafPro panelinde **Ayarlar → Geliştirici → API Kullanıcıları** bölümünden yeni bir anahtar oluşturun. Üretimde size bir `apiUserId` ve bir `secretKey` verilir.
+
+    <Warning>
+      Anahtarın **geçerlilik tarihi (accessDate)** gelecekte olmalıdır; tarihi gün bazında seçerseniz anahtar gün sonunda (00:00) devre dışı kalır. `secretKey` yalnızca üretim anında gösterilir — güvenli saklayın.
+    </Warning>
+  </Step>
+  <Step title="Authorization başlığını oluşturun">
+    SarrafPro Dış API, HTTP Basic kimlik doğrulaması kullanır. Kullanıcı adı `apiUserId`, parola `secretKey` olacak şekilde Base64 kodlayın:
 
     ```bash
-    npm install your-package
+    node -e "console.log(Buffer.from('<apiUserId>:<secretKey>').toString('base64'))"
     ```
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+  <Step title="İlk isteğinizi atın">
+    Cari hesap listesi ucu, API'nin en temel okuma noktasıdır:
 
     ```bash
-    your-cli init
+    curl 'https://api.sarraf.pro/v1/customers?page=1&pageSize=5' \
+      -H 'Authorization: Basic <base64>'
+    ```
+
+    Başarılı cevap:
+
+    ```json
+    {
+      "success": true,
+      "data": [
+        {
+          "id": "6a39d846afed5527f1c85f3b",
+          "idNo": "6310669512",
+          "nameSurname": "ÖRNEK KUYUMCULUK A.Ş.",
+          "idType": "company",
+          "isVerify": false
+        }
+      ],
+      "meta": {
+        "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+        "timestamp": "2026-09-05T00:00:00.000Z",
+        "page": 1,
+        "limit": 25,
+        "total": 114,
+        "pages": 5
+      }
+    }
     ```
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
-
-    ```bash
-    your-cli start
-    ```
+  <Step title="Cevap zarfını tanıyın">
+    Tüm uçlar aynı zarfı kullanır: başarılı cevapta `success` + `data` + `meta`, hatalı cevapta `success: false` + `error` + `traceId`. Ayrıntılar için [Genel Bakış](/api-reference/genel-bakis) sayfasına bakın.
   </Step>
 </Steps>
 
 <Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
-
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
+  Takıldığınız yerde bize yazın: [destek@sarraf.pro](mailto:destek@sarraf.pro). Hata bildirirken cevaptaki `traceId` değerini paylaşmanız yeterlidir.
 </Tip>

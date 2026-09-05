@@ -1,0 +1,73 @@
+---
+title: "Banka sorgusu tetikleme"
+description: "Entegre banka hesapları için hareket sorgusunu API'den başlatın"
+---
+
+Bu aksiyon ucu, şirketin entegre banka hesapları için banka hareket sorgusunu **anında** başlatır — zamanlanmış görevi (cron) beklemeden bakiye ve hareketleri tazeler.
+
+## `POST /v1/bank-queries`
+
+### İstek gövdesi
+
+```json
+{ "data": {} }
+```
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `data` | object | Zorunlu (boş nesne olabilir) |
+| `data.accountId` | string | Opsiyonel. Verilirse yalnızca bu hesap sorgulanır; verilmezse şirketin **tüm entegre hesapları** sorgulanır. |
+
+<Warning>
+  Bu uç **gerçek banka API çağrıları** yapar ve hesap sayısına bağlı olarak uzun sürebilir. Boş gövde (`{}` veya `{ "data": {} }`) tüm entegre hesapları tetikler — çağırmadan önce kapsamı bilinçli seçin.
+</Warning>
+
+### Davranış kuralları
+
+- Aday hesaplar: şirkete ait, `bank: true`, arşivsiz ve entegrasyon tanımlı (`integrationsData`) hesaplardır.
+- Hesaplar **sırayla** sorgulanır (banka API'leri yorulmaz).
+- Zamanlanmış görevin kilit mekanizması korunur: o anda başka bir sorgu tarafından işlenen hesap `skipped` döner; kilit ve dilim muhasebesi bozulmaz.
+- Hesap bazında hata (banka reddi, entegrasyon sorunu vb.) isteği batırmaz; ilgili hesabın `status`/`message` alanına yazılır.
+
+### Cevap — `200`
+
+Kaynak yaratmayan aksiyonlarda API `200` döner (`201` yalnızca kaynak yaratan uçlarda kullanılır):
+
+```json
+{
+  "success": true,
+  "data": {
+    "total": 3,
+    "triggered": 2,
+    "succeeded": 2,
+    "failed": 0,
+    "skipped": 1,
+    "results": [
+      { "accountId": "6a39d846afed5527f1c85f3b", "name": "AKBANK TL", "status": "success", "message": null },
+      { "accountId": "6a39d846afed5527f1c85f3c", "name": "KUVEYT TL", "status": "skipped", "message": "Hesap su anda baska bir sorgu tarafindan isleniyor." }
+    ],
+    "ranAt": "2026-09-05T20:29:33.000Z"
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+| Alan | Anlam |
+|---|---|
+| `total` | Aday (entegre) hesap sayısı |
+| `triggered` | Kilit alınıp çalıştırılan hesap sayısı |
+| `succeeded` / `failed` / `skipped` | Sonuç dağılımı |
+| `results[].status` | `success`, `failed` veya `skipped` (o anda işleniyor) |
+| `results[].message` | Banka/işlem mesajı (varsa) |
+
+### Hata durumları
+
+| Durum | HTTP | Açıklama |
+|---|---|---|
+| `accountId` biçimi geçersiz | 400 | `VALIDATION_FAILED` |
+| Hesap şirkete ait değil / yok | 404 | `RESOURCE_NOT_FOUND` |
+| Hesabın entegrasyonu tanımlı değil | 400 | `VALIDATION_FAILED` (`rule: "integrated"`) |
+
+<Tip>
+  Sorgu tamamlandıktan sonra güncel bakiyeleri [Banka hesapları](/api-reference/banka-hesaplari), yeni hareketleri [Banka hareketleri](/api-reference/banka-hareketleri) uçlarından okuyun.
+</Tip>

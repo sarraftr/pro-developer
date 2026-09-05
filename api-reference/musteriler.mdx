@@ -1,0 +1,118 @@
+---
+title: "Müşteriler"
+description: "Cari hesap listesi, müşteri detayı ve müşteri tanı formatında yeni müşteri oluşturma"
+---
+
+Cari hesaplar (müşteriler) SarrafPro'nun temel kaydıdır. Bu kaynak okuma uçlarının yanında **müşteri tanı formatında oluşturma** ucu da sunar.
+
+## `GET /v1/customers` — müşteri listesi
+
+Şirkete ait cari hesapları sayfalı, filtreli ve sıralı listeler.
+
+### Sorgu parametreleri
+
+Ortak parametreler (`page`, `pageSize`, `sort`, `q`) için [Genel Bakış](/api-reference/genel-bakis) sayfasına bakın.
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[idType]` | string | `person` veya `company` |
+| `filter[idCardType]` | string | `idCard`, `passport`, `dlCard`, `other`. `idCard` seçimi; belge türü alanı eksik/null/boş olan eski kayıtları da kapsar. |
+| `filter[recordLevel]` | integer | `0` kayıt yok, `1` normal, `2` güvenli, `3` riskli, `4` yasaklı. `0` seçimi alanı olmayan kayıtları da kapsar. |
+| `filter[isVerify]` | boolean | Müşteri tanı (doğrulama) durumu |
+| `filter[isValid]` | boolean | Kimlik doğrulama (NVİ) durumu |
+| `filter[isPhoto]` | boolean | Belge görseli varlığı |
+| `filter[saveType]` | string | Kayıt kaynağı: `bank`, `manual`, `idCard`, `accord` |
+| `filter[label]` | string | Tekil etiket |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+
+Sıralama whitelist'i: `createdDate`, `lastDate`, `updatedAt`, `nameSurname`. Varsayılan `createdDate:asc`.
+
+### Cevap alanları (liste öğesi)
+
+`id`, `idNo`, `idType`, `idCardType`, `nameSurname`, `phone`, `email`, `nationality`, `countries`, `states`, `cities`, `labels`, `recordLevel`, `isVerify`, `isValid`, `isPhoto`, `saveType`, `createdDate`, `lastDate`, `updatedAt`
+
+## `GET /v1/customers/{id}` — müşteri detayı
+
+Tek cari hesabın geniş kaydını döner. Liste alanlarına ek olarak:
+
+`name`, `surname`, `ownerName`, `birthplace`, `birthday`, `year`, `phone2`, `taxOffice`, `registryNo`, `cmpNo`, `activityName`, `naceCode`, `countriesCode`, `statesCode`, `address`, `motherName`, `fatherName`, `isAbroad`, `jobName`, `ibans`, `bankCodes`, `docTypes`, `customerRelation`
+
+<Note>
+  Kimlik numarası (`idNo`) fatura/eşleştirme gereksinimleri nedeniyle **tam ve maskesiz** döner. PII alanları yalnızca detay ucunda yer alır.
+</Note>
+
+## `POST /v1/customers` — müşteri tanı formatında oluşturma
+
+Yeni müşteri, **müşteri tanı (KYC) formu** olarak oluşturulur: kayıt onay bekleyen bir form olarak doğar (`isApproval: false`) ve onay akışı panel tarafında tamamlanır. API üzerinden doğrudan onaylı müşteri yaratılamaz.
+
+### İstek gövdesi
+
+```json
+{
+  "data": {
+    "idNo": "12345678901",
+    "nameSurname": "ÖRNEK KUYUMCULUK A.Ş.",
+    "idType": "company",
+    "idCardType": "idCard",
+    "phone": "5551234567",
+    "customerRelation": {
+      "types": "representative",
+      "nameSurname": "Yetkili Adı",
+      "idNo": "98765432109"
+    }
+  }
+}
+```
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `idNo` | string | **Zorunlu** |
+| `nameSurname` | string | **Zorunlu** |
+| `idType` | string | `person` (varsayılan) veya `company` |
+| `idCardType` | string | `idCard` (varsayılan), `passport`, `dlCard`, `other` |
+| `customerRelation` | object | Yalnız `idType=company` iken kabul edilir |
+| diğer KYC alanları | string | `birthplace`, `birthday`, `phone`, `phone2`, `email`, `iban`, `taxOffice`, `registryNo`, `activityName`, `naceCode`, `countriesCode`, `countries`, `statesCode`, `states`, `cities`, `address`, `motherName`, `fatherName`, `jobName` |
+| `isAbroad`, `onlyInvoice` | boolean | Opsiyonel |
+
+<Warning>
+  Salt okunur alanlar (`isApproval`, `isSigned`, `isDeleted`, `masakStatus`, `companiesId`, `userId`, `approval*` vb.) veya sözleşmede olmayan alanlar gönderilirse istek `400 VALIDATION_FAILED` ile reddedilir.
+</Warning>
+
+### Cevap — `201`
+
+Oluşan formun liste öğesi döner; durum takibi `GET /v1/compliance/verifications/{id}` ile yapılır:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6a9c7e2bf2fb39feccb3480b",
+    "idNo": "12345678901",
+    "nameSurname": "ÖRNEK KUYUMCULUK A.Ş.",
+    "idType": "company",
+    "idCardType": "idCard",
+    "isApproval": false,
+    "isSigned": false,
+    "masakStatus": 0,
+    "createdAt": "2026-09-05T20:30:00.000Z",
+    "updatedAt": "2026-09-05T20:30:00.000Z"
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+### Çift kayıt — `409 CONFLICT`
+
+Aynı `idNo` ile onay bekleyen (silinmemiş ve onaylanmamış) bir form zaten varsa istek reddedilir ve mevcut kaydın kimliği döner:
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "CONFLICT",
+    "message": "Bu idNo icin onay bekleyen bir musteri tani formu zaten var.",
+    "details": [ { "field": "data.idNo", "rule": "duplicate", "existingId": "6a9c7e2bf2fb39feccb3480b" } ]
+  },
+  "traceId": "..."
+}
+```

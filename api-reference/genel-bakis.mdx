@@ -1,0 +1,149 @@
+---
+title: "Genel Bakış"
+description: "SarrafPro Dış API v1'in tüm uçlarında geçerli ortak sözleşme: kimlik doğrulama, cevap zarfı, hata kodları, sayfalama ve filtreleme"
+---
+
+SarrafPro Dış API v1, `/v1` öneki altında yayınlanan tüm uçlar için **tek ve donmuş bir sözleşme** kullanır. Bu sayfadaki kurallar her uçta aynen geçerlidir; kaynak sayfalarında yalnızca kaynağa özel alanlar anlatılır.
+
+## Ortamlar
+
+| Ortam | Base URL |
+|---|---|
+| Canlı | `https://api.sarraf.pro` |
+| Yerel geliştirme | `http://api.sarraf.bh:3000` |
+
+## Kimlik doğrulama
+
+Tüm uçlar HTTP Basic kimlik doğrulaması gerektirir. Kullanıcı adı `apiUserId`, parola `secretKey` değeridir:
+
+```http
+Authorization: Basic base64(apiUserId:secretKey)
+```
+
+<Warning>
+  Anahtar kaydı `status: true` ve **geçerlilik tarihi gelecekte** olmalıdır; aksi halde API `401` döner. Şirketiniz `Free` paketteyse veya pasifleştirildiyse de istek reddedilir.
+</Warning>
+
+## Cevap zarfı
+
+### Başarılı cevap
+
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-05T00:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
+| Alan | Anlam |
+|---|---|
+| `success` | Her zaman `true` |
+| `data` | Kaynak verisi — liste uçlarında dizi, detay uçlarında nesne |
+| `meta.requestId` | İstek kimliği; `x-request-id` cevap başlığıyla aynı değer |
+| `meta.timestamp` | Cevap zamanı (ISO-8601) |
+| `meta.page` / `limit` / `total` / `pages` | Yalnız liste uçlarında: sayfalama bilgisi |
+
+### Hatalı cevap
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": "VALIDATION_FAILED",
+    "message": "pageSize 1-100 araliginda olmalidir.",
+    "details": [ { "field": "pageSize", "rule": "min:1,max:100" } ]
+  },
+  "traceId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866"
+}
+```
+
+### Hata kodları
+
+| HTTP | `error.code` | Anlam |
+|---|---|---|
+| 400 | `VALIDATION_FAILED` | Parametre, filtre veya gövde doğrulaması başarısız. `details` dizisi hangi alanın neden reddedildiğini söyler. |
+| 401 | `AUTH_INVALID_CREDENTIALS` | Authorization başlığı eksik/yanlış, anahtar pasif veya süresi dolmuş, şirket geçersiz. |
+| 403 | `AUTH_FORBIDDEN` | Anahtar geçerli ancak bu kaynağa yetkisi yok. |
+| 404 | `RESOURCE_NOT_FOUND` | Kayıt veya uç bulunamadı. |
+| 409 | `CONFLICT` | Çift kayıt — örn. aynı `idNo` ile onay bekleyen form varken yeni müşteri oluşturma. `details[0].existingId` mevcut kaydı gösterir. |
+| 500 | `INTERNAL_ERROR` | Beklenmeyen sunucu hatası. |
+
+<Tip>
+  Destek taleplerinde `traceId` paylaşmanız yeterlidir; tüm istek/cevap kayıtları bu kimlikle eşleştirilir.
+</Tip>
+
+## Liste uçları: sayfalama, sıralama, filtreleme
+
+### Sayfalama
+
+| Parametre | Tür | Varsayılan | Sınır |
+|---|---|---|---|
+| `page` | integer | `1` | en az 1 |
+| `pageSize` | integer | `25` | en fazla 100 |
+
+### Sıralama
+
+`sort=alan:asc|desc` biçimindedir. Her kaynağın izinli alan listesi (whitelist) vardır; liste dışı alan `400` döner. Örnek: `sort=createdAt:desc`.
+
+### Filtreleme
+
+Filtreler `filter[alan]=değer` biçiminde yazılır ve her kaynağın sözleşmesinde açıkça listelenir:
+
+```bash
+curl 'https://api.sarraf.pro/v1/bank-transactions?filter[incoming]=true&filter[masakStatus]=2'
+```
+
+<Note>
+  **Bilinmeyen filtre alanı** `400 VALIDATION_FAILED` döner. Bu, sözleşmenin donmasını garanti eder: API sessizce yeni bir filtreyi kabul edip beklenmedik davranmaz.
+</Note>
+
+### Serbest metin arama
+
+Çoğu kaynakta `q` parametresi vardır. Numerik değerler ilgili kimlik alanında (`idNo`) tam eşleşme, metin değerler ad/ünvan alanında büyük-küçük harf duyarsız arama yapar.
+
+### Artımlı senkronizasyon (incremental sync)
+
+Çoğu kaynakta `filter[updatedSince]` desteklenir: yalnızca verilen ISO-8601 tarihinden sonra güncellenen kayıtlar döner. Muhasebe ve e-ticaret entegrasyonlarında önerilen desen:
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers?filter[updatedSince]=2026-09-01T00:00:00.000Z&sort=updatedAt:asc&pageSize=100'
+```
+
+<Note>
+  `accounts` modeli gibi `updatedAt` taşımayan kaynaklarda `updatedSince` desteklenmez ve `400` döner; bu durum kaynak sayfasında belirtilir.
+</Note>
+
+## Yazma uçları: gövde zarfı ve durum kodları
+
+`POST` uçlarında gövde **`data` zarfı** zorunludur:
+
+```json
+{ "data": { "idNo": "...", "nameSurname": "..." } }
+```
+
+Zarf eksikse veya `data` nesne değilse istek `400` ile reddedilir.
+
+| Durum | Ne zaman |
+|---|---|
+| `201` | Kaynak oluşturuldu (örn. müşteri tanı formu, yaptırım sorgu kaydı) |
+| `200` | Kaynak yaratmayan aksiyonlar (örn. banka sorgusu tetikleme) |
+| `400` | Doğrulama hatası — bilinmeyen/salt-okunur alanlar da bu kapsamda reddedilir |
+| `409` | Çift kayıt çakışması |
+
+## Alan disiplini
+
+- Mongo `_id` hiçbir cevapta görünmez; kimlik her zaman `id` alanıdır.
+- Şirket içi alanlar (`companiesId`, `userId` vb.) ve entegrasyon sırları (örn. banka `integrationsData`) hiçbir uçta dönmez.
+- Tarihler ISO-8601 metnidir.
+
+## OpenAPI tanımı
+
+Uçların makine-okunur sözleşmesi OpenAPI 3.0.3 dosyası olarak yayınlanır ve her yeni kaynakla güncellenir. Postman/Insomnia import veya kod üretimi (client SDK, mock) için kullanılabilir.

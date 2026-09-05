@@ -1,0 +1,63 @@
+---
+title: "Banka hesapları"
+description: "Banka hesapları ve güncel bakiyeler — son sorgu durumuyla birlikte"
+---
+
+Banka hesapları kaynağı, şirketin gerçek banka hesaplarını (`bank=true`; kasa/pos/kredi hesapları hariç) bakiye ve son sorgu bilgisiyle sunar.
+
+## `GET /v1/bank-accounts` — hesap listesi
+
+### Sorgu parametreleri
+
+Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[archived]` | boolean | Verilmezse yalnız arşivsiz hesaplar döner |
+| `filter[currency]` | string | Para birimi (büyük harfe normalize edilir) |
+| `filter[bankCode]` | string | Banka kodu |
+| `filter[isApi]` | boolean | `true`: yalnız banka entegrasyonu bağlı hesaplar |
+| `q` | string | Hesap adında arama |
+
+Sıralama whitelist'i: `createdDate`, `name`, `balance`. Varsayılan `createdDate:asc`.
+
+<Note>
+  Bu modelde `updatedAt` alanı olmadığından `filter[updatedSince]` desteklenmez (`400` döner). Bakiyenin tazeliğini `lastCheckAt` alanıyla takip edin.
+</Note>
+
+### Cevap alanları (liste öğesi)
+
+| Alan | Anlam |
+|---|---|
+| `id` | Hesap kimliği |
+| `name`, `bankName`, `bankCode`, `code` | Hesap ve banka tanımları |
+| `iban`, `currency` | IBAN ve para birimi |
+| `type` | `cash`, `bank`, `pos`, `credit` (bu kaynakta her zaman `bank` ağırlıklı) |
+| `default` | Varsayılan hesap mı |
+| `isApi` | Banka entegrasyonu bağlı mı |
+| `isDemo` | Demo hesap mı |
+| `limit` | Sorgulama limiti |
+| `balance` | Güncel bakiye (son sorgudaki) |
+| `lastCheckAt` | Son banka sorgusu zamanı |
+| `lastTransactionAt` | Son çekilen hareketin zamanı |
+| `lastCheckStatus` / `lastCheckMessage` | Son sorgunun başarı durumu ve banka cevabı |
+| `lastCheckSize` | Son sorguda çekilen hareket sayısı |
+
+## `GET /v1/bank-accounts/{id}` — hesap detayı
+
+Liste alanlarına ek olarak:
+
+| Alan | Anlam |
+|---|---|
+| `subAccounts` | Alt hesaplar (kendi bakiye bilgileriyle) |
+| `expiryDay` | POS ise bloke, kredi ise son ödeme günü |
+| `commission` | POS komisyon tutarı |
+| `archived` | Arşiv durumu |
+
+<Warning>
+  Banka entegrasyon kimlik bilgileri (`integrationsData`) ve iç kilit alanları hiçbir uçta dönmez.
+</Warning>
+
+<Tip>
+  Bakiyeleri tazelemek için [Banka sorgusu tetikleme](/api-reference/banka-sorgu-tetikleme) ucunu kullanın; ardından hesap listesini yeniden okuyun.
+</Tip>

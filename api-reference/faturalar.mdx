@@ -1,0 +1,58 @@
+---
+title: "Faturalar"
+description: "Sistem üzerinden kesilen faturaları kalem satırlarına kadar okuyun"
+---
+
+Faturalar kaynağı, SarrafPro üzerinden kesilen e-faturaların kayıtlarını sunar. Liste ucu hafif özet döner; kalem satırları (`lines`) ve tam müşteri bloğu detay ucundadır.
+
+## `GET /v1/invoices` — fatura listesi
+
+### Sorgu parametreleri
+
+Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[idNo]` | string | Müşteri TCKN/VKN tam eşleşme |
+| `filter[invoiceNumber]` | string | Fatura numarası tam eşleşme |
+| `filter[type]` | string | Fatura türü |
+| `filter[integrator]` | string | Entegratör (Nilvera, GIB vb.) |
+| `filter[module]` | string | Faturanın üretildiği modül |
+| `filter[startDate]` / `filter[endDate]` | date-time | `transactionDate` (fatura/resmileştirme tarihi) aralığı |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+
+Sıralama whitelist'i: `transactionDate`, `createdAt`, `updatedAt`, `payableTotal`. Varsayılan `transactionDate:asc`.
+
+### Cevap alanları (liste öğesi)
+
+| Alan | Anlam |
+|---|---|
+| `id` | Fatura kayıt kimliği |
+| `transactionDate` | Fatura / resmileştirme tarihi |
+| `invoiceNumber` | Fatura numarası |
+| `invoiceType` / `integrator` / `invoiceStatus` | Tür, entegratör ve gönderim durumu |
+| `linesTotal`, `kdvTotal`, `allowanceTotal`, `payableTotal` | Tutar özeti (kalem toplamı, KDV, iskonto, ödenecek) |
+| `customer` | `{ taxNumber, name }` — müşteri özeti |
+| `idNo` | Müşteri TCKN/VKN |
+| `module` | Üretildiği modül |
+
+## `GET /v1/invoices/{id}` — fatura detayı
+
+Liste alanlarına ek olarak:
+
+- **`customer`** — tam blok: `taxNumber`, `name`, `taxOffice`, `address`, `district`, `city`, `phone`, `mail`, `webSite`, `country`
+- **`invoiceInfo`** — tam entegratör bilgisi: `integrator`, `type`, `uuid`, `invoiceNumber`, `status`
+- **`lines[]`** — kalem satırları:
+
+| Kalem alanı | Anlam |
+|---|---|
+| `name`, `quantity`, `unitType`, `stockCode` | Ürün/hizmet tanımı, miktar, birim, stok kodu |
+| `price`, `amount`, `lineTotal` | Birim fiyat, net tutar (KDV ve iskontosuz), satır toplamı |
+| `kdvPercent`, `kdvTotal` | KDV oranı ve tutarı |
+| `allowancePrice`, `allowanceTotal` | İskonto birim ve toplam tutarı |
+| `ozelMatrahTotal` | Özel matrah tutarı |
+| `isExtra`, `isDefault`, `isLabor` | Ek kalem / varsayılan kalem / işçilik kalemi |
+
+<Note>
+  Fatura modelinde para birimi alanı tutulmaz; tutarlar kayıtlı haliyle döner. Fatura PDF/görsel içeriği bu sürümde API'de yoktur.
+</Note>
