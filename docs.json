@@ -51,7 +51,10 @@
             "pages": [
               "api-reference/musteri-tani-formlari",
               "api-reference/kimlik-belgeleri",
-              "api-reference/yaptirim-sorgulari"
+              "api-reference/yaptirim-sorgulari",
+              "api-reference/musteri-sicil-olaylari",
+              "api-reference/musteri-degisiklik-denetimi",
+              "api-reference/idv-oturumlari"
             ]
           }
         ]

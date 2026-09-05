@@ -1,13 +1,13 @@
 ---
 title: "Yaptırım sorguları"
-description: "MASAK / wanted sorgusu tetikleyin ve tam sorgu geçmişini okuyun"
+description: "MASAK / wanted / PEP sorgusu tetikleyin ve birleşik sorgu geçmişini okuyun"
 ---
 
-Yaptırım sorguları kaynağı iki yönlüdür: **sorgu tetikleme** (yazma) ve **sorgu geçmişi** (okuma). Tetiklenen her sorgu otomatik olarak geçmişe düşer.
+Yaptırım sorguları kaynağı iki yönlüdür: **tam kapsamlı sorgu tetikleme** (yazma) ve **birleşik sorgu geçmişi** (okuma). Panelde yapılan aramalar ve API'den tetiklenen sorgular aynı geçmişe düşer.
 
 ## `POST /v1/compliance/sanction-checks` — sorgu tetikleme
 
-Verilen kimlik numarasını MASAK yaptırım listesinde; ad soyad verilmişse ayrıca wanted listesinde (Türkçe duyarlı eşleşme ile) sorgular. Sonuç log kaydı olarak yazılır ve eşleşme içerikleriyle birlikte döner.
+Verilen kriterlere göre MASAK, wanted ve PEP listelerinde sorgu çalıştırır; ayrıca şirketinizin müşteri kaydı ve müşteri sicil olaylarıyla eşleştirir. Sonuç log kaydı olarak yazılır.
 
 ### İstek gövdesi
 
@@ -15,15 +15,20 @@ Verilen kimlik numarasını MASAK yaptırım listesinde; ad soyad verilmişse ay
 {
   "data": {
     "idNo": "1976926558",
-    "nameSurname": "ÖRNEK KİŞİ"
+    "fullName": "ÖRNEK KİŞİ",
+    "surname": "ÖRNEK",
+    "options": { "wantedQuery": true, "pepQuery": true }
   }
 }
 ```
 
 | Alan | Tür | Kural |
 |---|---|---|
-| `data.idNo` | string | **Zorunlu** — sorgulanacak TCKN/VKN/belge numarası |
-| `data.nameSurname` | string | Opsiyonel — verilirse wanted listesi de sorgulanır; verilmezse wanted atlanır |
+| `data.idNo` | string | `idNo`, `fullName` veya `surname`'den **en az biri** zorunlu |
+| `data.fullName` | string | Ad bazlı sorgular (masak/wanted/pep) |
+| `data.surname` | string | Soyad bazlı daraltma (wanted/pep) |
+| `data.options.wantedQuery` | boolean | Varsayılan `true` |
+| `data.options.pepQuery` | boolean | Varsayılan `true` |
 
 ### Cevap — `201`
 
@@ -31,12 +36,11 @@ Verilen kimlik numarasını MASAK yaptırım listesinde; ad soyad verilmişse ay
 {
   "success": true,
   "data": {
-    "id": "6a9c793bfd4be6d9b9a279e7",
-    "idNo": "1976926558",
-    "types": ["masak", "wanted"],
-    "isError": false,
-    "matches": { "masak": [], "wanted": [] },
-    "checkedAt": "2026-09-05T20:19:07.875Z"
+    "id": "6a9c930093ea09f8ee9d115c",
+    "query": { "idNo": "1976926558", "fullName": "ÖRNEK KİŞİ", "surname": null, "options": { "wantedQuery": true, "pepQuery": true } },
+    "summary": { "masakCount": 0, "wantedCount": 0, "pepCount": 0, "hasCustomer": true, "customerEventCount": 0 },
+    "matches": { "masak": [], "wanted": [], "pep": [] },
+    "checkedAt": "2026-09-05T23:59:00.000Z"
   },
   "meta": { "requestId": "...", "timestamp": "..." }
 }
@@ -44,37 +48,36 @@ Verilen kimlik numarasını MASAK yaptırım listesinde; ad soyad verilmişse ay
 
 | Alan | Anlam |
 |---|---|
-| `id` | Oluşan sorgu kaydının kimliği (geçmişte bu id ile okunur) |
-| `types` | Çalıştırılan sorgu türleri |
-| `isError` | Herhangi bir listede eşleşme bulundu mu |
-| `matches.masak` / `matches.wanted` | Eşleşme içerikleri (yaptırım listesi kayıtları) |
+| `summary.masakCount` / `wantedCount` / `pepCount` | Liste eşleşme sayıları |
+| `summary.hasCustomer` | Şirket müşteri kaydında eşleşme var mı |
+| `summary.customerEventCount` | Müşterinin sicil olayı sayısı |
+| `matches` | Liste eşleşme içerikleri (tam kayıtlar) |
 
 <Note>
-  Sorgu kaydına `userId` olarak tetikleyen API kullanıcısının kimliği yazılır — denetim izi korunur.
+  Sorgu kaydına `userId` olarak tetikleyen API kullanıcısının kimliği yazılır; IP ve user-agent denetim amacıyla saklanır.
 </Note>
 
-## `GET /v1/compliance/sanction-checks` — sorgu geçmişi
+## `GET /v1/compliance/sanction-checks` — birleşik sorgu geçmişi
 
-Şirkete ait tüm yaptırım sorgu kayıtlarını (otomatik taramalar + manuel/API sorguları) listeler. Varsayılan sıralama **en yeni önce** (`createdAt:desc`).
+Panel aramaları ve API sorgularının birleşik geçmişi. Varsayılan sıralama **en yeni önce** (`createdAt:desc`).
 
 ### Sorgu parametreleri
 
 | Parametre | Tür | Açıklama |
 |---|---|---|
-| `filter[idNo]` | string | Sorgulanan TCKN/VKN (ana filtre) |
-| `filter[type]` | string | `masak`, `wanted`, `pep` |
-| `filter[isError]` | boolean | Hatalı sorgulara göre filtre |
+| `filter[idNo]` | string | Sorgulanan TCKN/VKN |
+| `filter[fullName]` | string | Sorgulanan ad soyad |
 | `filter[startDate]` / `filter[endDate]` | date-time | `createdAt` aralığı |
 | `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
 
 ### Cevap alanları (liste öğesi)
 
-`id`, `idNo`, `types`, `isError`, `createdAt`, `updatedAt`
+`id`, `idNo`, `fullName`, `surname`, `summary` (eşleşme sayıları), `createdAt`, `updatedAt`
 
 ## `GET /v1/compliance/sanction-checks/{id}` — sorgu detayı
 
-Liste alanlarına ek olarak **`data`** döner: sorgunun tam sonucu (yaptırım listesi eşleşme içeriği).
+Liste alanlarına ek olarak: `query` (tam kriter), `matches` (tam liste içerikleri), `customer` (eşleşen müşteri kaydı), `customerEvents` (müşteri sicil olayları), `checkedAt`.
 
 <Tip>
-  Banka hareketleri için sorgu sonucunu ayrıca çekmenize gerek yoktur — hareket detayında [gömülü `masak` bölümü](/api-reference/banka-hareketleri) zaten en son sorguyu özetler.
+  Banka hareketleri için [gömülü `masak` bölümü](/api-reference/banka-hareketleri), müşteri bazlı sicil için [Müşteri sicil olayları](/api-reference/musteri-sicil-olaylari) kaynağını da kullanabilirsiniz.
 </Tip>

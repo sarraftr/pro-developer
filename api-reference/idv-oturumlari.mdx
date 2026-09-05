@@ -1,0 +1,30 @@
+---
+title: "IDV oturumları"
+description: "Kimlik doğrulama (IDV) oturum kayıtları"
+---
+
+IDV oturumları, müşteri kimlik doğrulama servisinde (idv) gerçekleşen doğrulama oturumlarının kayıtlarıdır.
+
+## `GET /v1/compliance/idv-sessions` — oturum listesi
+
+Varsayılan sıralama **en yeni önce** (`createdAt:desc`).
+
+### Sorgu parametreleri
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[idNo]` | string | Doğrulanan TCKN/VKN tam eşleşme |
+| `filter[startDate]` / `filter[endDate]` | date-time | `createdAt` aralığı |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+
+### Cevap alanları (liste öğesi)
+
+`id`, `idNo`, `createdAt`, `updatedAt`
+
+## `GET /v1/compliance/idv-sessions/{id}` — oturum detayı
+
+Liste alanlarına ek olarak **`dataSet`** döner: doğrulama oturumunun sonuç verisi.
+
+<Warning>
+  Oturumun ham istemci bilgileri (user-agent vb.) hiçbir uçta dönmez.
+</Warning>

@@ -1,0 +1,34 @@
+---
+title: "Müşteri sicil olayları"
+description: "Müşterilere ait şüphe/sicil olay kayıtları — risk seviyesi ve yorum ile"
+---
+
+Sicil olayları, müşteriler hakkında kaydedilen risk değerlendirme kayıtlarıdır (şüphe durumları). Kayıt seviyeleri müşterinin `recordLevel` alanıyla aynı ölçeği kullanır.
+
+## `GET /v1/compliance/customer-events` — olay listesi
+
+Varsayılan sıralama **en yeni olay önce** (`eventDate:desc`).
+
+### Sorgu parametreleri
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[idNo]` | string | Müşteri TCKN/VKN tam eşleşme |
+| `filter[recordLevel]` | integer | `0` kayıt yok, `1` normal, `2` güvenli, `3` riskli, `4` yasaklı |
+| `filter[startDate]` / `filter[endDate]` | date-time | `eventDate` aralığı |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+
+### Cevap alanları
+
+| Alan | Anlam |
+|---|---|
+| `id` | Olay kayıt kimliği |
+| `eventDate` | Olay zamanı |
+| `customerId` | İlgili müşteri kimliği — [Müşteri detayı](/api-reference/musteriler) ile çapraz sorgulanabilir |
+| `idNo` | Müşteri TCKN/VKN |
+| `recordLevel` | Risk seviyesi (0-4) |
+| `comment` | Olay açıklaması |
+
+## `GET /v1/compliance/customer-events/{id}` — olay detayı
+
+Tek olay kaydını aynı alanlarla döner.

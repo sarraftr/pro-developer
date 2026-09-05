@@ -1,0 +1,27 @@
+---
+title: "Müşteri değişiklik denetimi"
+description: "Müşteri kayıtlarındaki önemli değişikliklerin denetim geçmişi"
+---
+
+Müşteri kayıtlarındaki önemli değişiklikler (güncelleme / kaldırma) denetim amacıyla kayıt altına alınır. Bu kaynak, kim-ne-zaman-değişti bilgisini ve değişiklik anlık görüntüsünü sunar.
+
+## `GET /v1/compliance/customer-histories` — denetim listesi
+
+Varsayılan sıralama **en yeni önce** (`createdAt:desc`).
+
+### Sorgu parametreleri
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `filter[customerId]` | string | Müşteri kayıt kimliği (ObjectId) |
+| `filter[type]` | string | `update` veya `remove` |
+| `filter[startDate]` / `filter[endDate]` | date-time | `createdAt` aralığı |
+| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+
+### Cevap alanları (liste öğesi)
+
+`id`, `customerId`, `type`, `createdAt`, `updatedAt`
+
+## `GET /v1/compliance/customer-histories/{id}` — kayıt detayı
+
+Liste alanlarına ek olarak **`data`** döner: değişiklik anındaki kayıt anlık görüntüsü (önceki değerler).
