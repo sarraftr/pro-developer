@@ -1,0 +1,2503 @@
+{
+	"openapi": "3.0.3",
+	"info": {
+		"title": "Sarraf API v1",
+		"version": "1.0.0",
+		"description": "Sarraf sürümlü dış API yüzeyi. Bu sürüm salt okunurdur; e-ticaret siteleri ve muhasebe programları için mevcut kayıtların okunmasını sağlar. Kimlik doğrulama mevcut dış API ile aynıdır: HTTP Basic, base64(apiUserId:secretKey). Tüm yanıtlar sabit zarf formatındadır: başarılı yanıtta success/data/meta, hatalı yanıtta success/error{code,message,details}/traceId. Her yanıtta x-request-id başlığı döner ve traceId ile aynıdır."
+	},
+	"servers": [
+		{
+			"url": "https://api.sarraf.pro",
+			"description": "Canlı ortam"
+		}
+	],
+	"security": [
+		{
+			"BasicAuth": []
+		}
+	],
+	"tags": [
+		{
+			"name": "Customers",
+			"description": "Cari hesaplar — listeleme, detay ve müşteri tanı formatında oluşturma",
+			"x-group": "Müşteriler"
+		},
+		{
+			"name": "Bank accounts",
+			"description": "Banka hesapları, bakiyeler ve sorgu tetikleme",
+			"x-group": "Banka"
+		},
+		{
+			"name": "Bank transactions",
+			"description": "Gelen/giden banka hareketleri — detayda gömülü MASAK özeti",
+			"x-group": "Banka"
+		},
+		{
+			"name": "Invoices",
+			"description": "Sistem üzerinden kesilen faturalar",
+			"x-group": "Faturalar"
+		},
+		{
+			"name": "Compliance",
+			"description": "Müşteri tanı formları, kimlik belgeleri ve yaptırım sorguları",
+			"x-group": "Uyum (Compliance)"
+		}
+	],
+	"paths": {
+		"/v1/customers": {
+			"get": {
+				"operationId": "listCustomers",
+				"summary": "Cari hesap listesi",
+				"description": "Şirkete ait cari hesapları sayfalı, filtreli ve sıralı listeler. Bilinmeyen filter alanı 400 VALIDATION_FAILED döner. Muhasebe/e-ticaret incremental senkronizasyonu için filter[updatedSince] + sort=updatedAt:asc önerilir.",
+				"tags": ["Customers"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa numarası (en az 1).",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 1
+						}
+					},
+					{
+						"name": "pageSize",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa başına kayıt (1-100).",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"default": 25
+						}
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"description": "Sıralama: alan:asc|desc. İzinli alanlar: createdDate, lastDate, updatedAt, nameSurname. Varsayılan createdDate:asc.",
+						"schema": {
+							"type": "string",
+							"pattern": "^(createdDate|lastDate|updatedAt|nameSurname)(:(asc|desc))?$"
+						},
+						"example": "updatedAt:asc"
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"required": false,
+						"description": "Serbest metin arama. Numerik değer idNo tam eşleşmesi, metin değer nameSurname içinde büyük/küçük harf duyarsız arama yapar.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "filter[idType]",
+						"in": "query",
+						"required": false,
+						"description": "Kayıt türüne göre filtre.",
+						"schema": {
+							"type": "string",
+							"enum": ["person", "company"]
+						}
+					},
+					{
+						"name": "filter[idCardType]",
+						"in": "query",
+						"required": false,
+						"description": "Belge türüne göre filtre. idCard seçimi; alanı eksik, null veya boş olan legacy kayıtları da kapsar.",
+						"schema": {
+							"type": "string",
+							"enum": ["idCard", "passport", "dlCard", "other"]
+						}
+					},
+					{
+						"name": "filter[recordLevel]",
+						"in": "query",
+						"required": false,
+						"description": "Kayıt seviyesi: 0 kayıt yok (alanı olmayan kayıtları da kapsar), 1 normal, 2 güvenli, 3 riskli, 4 yasaklı.",
+						"schema": {
+							"type": "integer",
+							"minimum": 0,
+							"maximum": 4
+						}
+					},
+					{
+						"name": "filter[isVerify]",
+						"in": "query",
+						"required": false,
+						"description": "Müşteri tanı (doğrulama) durumuna göre filtre.",
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"name": "filter[isValid]",
+						"in": "query",
+						"required": false,
+						"description": "Kimlik doğrulama (TCKN/NVI) durumuna göre filtre.",
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"name": "filter[isPhoto]",
+						"in": "query",
+						"required": false,
+						"description": "Fotoğraf/belge görseli varlığına göre filtre.",
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"name": "filter[saveType]",
+						"in": "query",
+						"required": false,
+						"description": "Kaydın oluşma kaynağına göre filtre.",
+						"schema": {
+							"type": "string",
+							"enum": ["bank", "manual", "idCard", "accord"]
+						}
+					},
+					{
+						"name": "filter[label]",
+						"in": "query",
+						"required": false,
+						"description": "Tekil etiket ile filtre.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "filter[updatedSince]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; yalnız bu tarihte veya sonra güncellenen kayıtlar döner (updatedAt >=).",
+						"schema": {
+							"type": "string",
+							"format": "date-time"
+						},
+						"example": "2026-09-01T00:00:00.000Z"
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı liste yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": {
+									"type": "string",
+									"format": "uuid"
+								}
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CustomerListResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Doğrulama hatası (geçersiz sayfalama, sort, filter veya q).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Kimlik doğrulama başarısız.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Beklenmeyen sunucu hatası.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			},
+			"post": {
+				"operationId": "createCustomer",
+				"summary": "Yeni müşteri oluşturma (müşteri tanı formatında)",
+				"description": "Müşteri tanı (KYC) formatında yeni kayıt oluşturur: sarraf_accord.verifications içine onay bekleyen bir form yazılır (isApproval daima false doğar; API doğrudan onaylı müşteri yaratmaz). Aynı idNo ile onay bekleyen form varsa 409 CONFLICT döner ve details içinde existingId verilir. Salt okunur alanlar (isApproval, masakStatus, companiesId vb.) gönderilirse 400 döner.",
+				"tags": ["Customers"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/CustomerCreateRequest" }
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Müşteri tanı formu oluşturuldu; durum takibi GET /v1/compliance/verifications/{id} ile yapılır.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/CustomerCreateResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"409": {
+						"description": "Aynı idNo ile onay bekleyen form zaten var (details[0].existingId mevcut kaydı gösterir).",
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+							}
+						}
+					},
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/customers/{id}": {
+			"get": {
+				"operationId": "getCustomer",
+				"summary": "Cari hesap detayı",
+				"description": "Tek cari hesabın geniş kaydını döner. PII alanları (motherName, fatherName, birthplace vb.) yalnız bu uçta yer alır.",
+				"tags": ["Customers"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Kayıt kimliği (ObjectId).",
+						"schema": {
+							"type": "string",
+							"pattern": "^[a-fA-F0-9]{24}$"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı detay yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": {
+									"type": "string",
+									"format": "uuid"
+								}
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CustomerDetailResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Geçersiz id biçimi.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Kimlik doğrulama başarısız.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Kayıt bulunamadı.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Beklenmeyen sunucu hatası.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/v1/bank-transactions": {
+			"get": {
+				"operationId": "listBankTransactions",
+				"summary": "Banka hareketleri listesi",
+				"description": "Şirkete ait banka gelen/giden hareketlerini sayfalı, filtreli ve sıralı listeler. filter[incoming]=true yalnız gelen hareketleri döner. Bilinmeyen filter alanı 400 VALIDATION_FAILED döner. Incremental senkronizasyon için filter[updatedSince] + sort=updatedAt:asc önerilir.",
+				"tags": ["Bank transactions"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa numarası (en az 1).",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 1
+						}
+					},
+					{
+						"name": "pageSize",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa başına kayıt (1-100).",
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"default": 25
+						}
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"description": "Sıralama: alan:asc|desc. İzinli alanlar: transactionDate, createdDate, updatedAt, amount. Varsayılan transactionDate:asc.",
+						"schema": {
+							"type": "string",
+							"pattern": "^(transactionDate|createdDate|updatedAt|amount)(:(asc|desc))?$"
+						},
+						"example": "transactionDate:desc"
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"required": false,
+						"description": "Serbest metin arama. Numerik değer idNo tam eşleşmesi, metin değer nameSurname içinde büyük/küçük harf duyarsız arama yapar.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "filter[incoming]",
+						"in": "query",
+						"required": false,
+						"description": "true: yalnız gelen hareketler, false: yalnız giden hareketler.",
+						"schema": {
+							"type": "boolean"
+						}
+					},
+					{
+						"name": "filter[status]",
+						"in": "query",
+						"required": false,
+						"description": "İşlem durumu: 0 bekleyen, 1 işlem yapıldı, 2 yok sayıldı.",
+						"schema": {
+							"type": "integer",
+							"enum": [0, 1, 2]
+						}
+					},
+					{
+						"name": "filter[masakStatus]",
+						"in": "query",
+						"required": false,
+						"description": "MASAK tarama sonucu: 0 sorgulanmadı, 1 sorun yok, 2 sorunlu. Örn. sorunlu işlemler: filter[masakStatus]=2",
+						"schema": {
+							"type": "integer",
+							"enum": [0, 1, 2]
+						}
+					},
+					{
+						"name": "filter[idNo]",
+						"in": "query",
+						"required": false,
+						"description": "Gönderici TCKN/VKN tam eşleşme.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "filter[currency]",
+						"in": "query",
+						"required": false,
+						"description": "Para birimi (büyük harfe normalize edilir).",
+						"schema": {
+							"type": "string"
+						},
+						"example": "TRY"
+					},
+					{
+						"name": "filter[bankCode]",
+						"in": "query",
+						"required": false,
+						"description": "Banka kodu.",
+						"schema": {
+							"type": "string"
+						}
+					},
+					{
+						"name": "filter[startDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; transactionDate >= startDate.",
+						"schema": {
+							"type": "string",
+							"format": "date-time"
+						}
+					},
+					{
+						"name": "filter[endDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; transactionDate <= endDate.",
+						"schema": {
+							"type": "string",
+							"format": "date-time"
+						}
+					},
+					{
+						"name": "filter[updatedSince]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; yalnız bu tarihte veya sonra güncellenen kayıtlar döner (updatedAt >=).",
+						"schema": {
+							"type": "string",
+							"format": "date-time"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı liste yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": {
+									"type": "string",
+									"format": "uuid"
+								}
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BankTransactionListResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Doğrulama hatası (geçersiz sayfalama, sort veya filter).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Kimlik doğrulama başarısız.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Beklenmeyen sunucu hatası.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/v1/bank-transactions/{id}": {
+			"get": {
+				"operationId": "getBankTransaction",
+				"summary": "Banka hareketi detayı",
+				"description": "Tek banka hareketinin geniş kaydını döner. Cevabın masak bölümü, işlem göndericisinin idNo'suna ait en son MASAK/WANTED/PEP sorgu kaydını gömer; hiç sorgulanmadıysa status 0 ve lastQueriedAt null döner.",
+				"tags": ["Bank transactions"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Kayıt kimliği (ObjectId).",
+						"schema": {
+							"type": "string",
+							"pattern": "^[a-fA-F0-9]{24}$"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı detay yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": {
+									"type": "string",
+									"format": "uuid"
+								}
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/BankTransactionDetailResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Geçersiz id biçimi.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"401": {
+						"description": "Kimlik doğrulama başarısız.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Kayıt bulunamadı.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"description": "Beklenmeyen sunucu hatası.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/v1/compliance/verifications": {
+			"get": {
+				"operationId": "listComplianceVerifications",
+				"summary": "Müşteri tanı formu listesi (KYC/Accord)",
+				"description": "Şirkete ait müşteri tanı formu kayıtlarını sayfalı, filtreli ve sıralı listeler. Silinmiş formlar varsayılan olarak dönmez; filter[isDeleted]=true ile sorgulanabilir. Bilinmeyen filter alanı 400 VALIDATION_FAILED döner.",
+				"tags": ["Compliance"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa numarası (en az 1).",
+						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+					},
+					{
+						"name": "pageSize",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa başına kayıt (1-100).",
+						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"description": "Sıralama: alan:asc|desc. İzinli alanlar: createdAt, updatedAt, nameSurname. Varsayılan createdAt:asc.",
+						"schema": { "type": "string", "pattern": "^(createdAt|updatedAt|nameSurname)(:(asc|desc))?$" }
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"required": false,
+						"description": "Serbest metin arama. Numerik değer idNo tam eşleşmesi, metin değer nameSurname içinde arama yapar.",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[idNo]",
+						"in": "query",
+						"required": false,
+						"description": "TCKN/VKN tam eşleşme.",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[idType]",
+						"in": "query",
+						"required": false,
+						"description": "Kayıt türü.",
+						"schema": { "type": "string", "enum": ["person", "company"] }
+					},
+					{
+						"name": "filter[idCardType]",
+						"in": "query",
+						"required": false,
+						"description": "Belge türü. idCard seçimi; alanı eksik, null veya boş olan legacy kayıtları da kapsar.",
+						"schema": { "type": "string", "enum": ["idCard", "passport", "dlCard", "other"] }
+					},
+					{
+						"name": "filter[isApproval]",
+						"in": "query",
+						"required": false,
+						"description": "Form onay durumu.",
+						"schema": { "type": "boolean" }
+					},
+					{
+						"name": "filter[isSigned]",
+						"in": "query",
+						"required": false,
+						"description": "İmza durumu.",
+						"schema": { "type": "boolean" }
+					},
+					{
+						"name": "filter[isDeleted]",
+						"in": "query",
+						"required": false,
+						"description": "Silinme durumu. Verilmezse yalnız silinmemiş kayıtlar döner.",
+						"schema": { "type": "boolean" }
+					},
+					{
+						"name": "filter[masakStatus]",
+						"in": "query",
+						"required": false,
+						"description": "MASAK tarama sonucu: 0 sorgulanmadı, 1 sorun yok, 2 sorunlu.",
+						"schema": { "type": "integer", "enum": [0, 1, 2] }
+					},
+					{
+						"name": "filter[startDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; createdAt >= startDate.",
+						"schema": { "type": "string", "format": "date-time" }
+					},
+					{
+						"name": "filter[endDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; createdAt <= endDate.",
+						"schema": { "type": "string", "format": "date-time" }
+					},
+					{
+						"name": "filter[updatedSince]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; yalnız bu tarihte veya sonra güncellenen kayıtlar döner (updatedAt >=).",
+						"schema": { "type": "string", "format": "date-time" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı liste yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/VerificationListResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/compliance/verifications/{id}": {
+			"get": {
+				"operationId": "getComplianceVerification",
+				"summary": "Müşteri tanı formu detayı",
+				"description": "Tek formun geniş kaydını döner. Belge içerikleri dönmez; companyDocuments yalnız dosya metası (fileName, mimeType, size) içerir.",
+				"tags": ["Compliance"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Kayıt kimliği (ObjectId).",
+						"schema": { "type": "string", "pattern": "^[a-fA-F0-9]{24}$" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı detay yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/VerificationDetailResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"404": { "$ref": "#/components/responses/NotFound" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/compliance/identity-documents": {
+			"get": {
+				"operationId": "listComplianceIdentityDocuments",
+				"summary": "Kimlik belge kayıtları listesi",
+				"description": "Şirkete ait kimlik belge kayıtlarını (doğrulama durumlarıyla) listeler. Geçersiz (isDisabled) kayıtlar varsayılan olarak dönmez; filter[isDisabled]=true ile sorgulanabilir. Bilinmeyen filter alanı 400 VALIDATION_FAILED döner.",
+				"tags": ["Compliance"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa numarası (en az 1).",
+						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+					},
+					{
+						"name": "pageSize",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa başına kayıt (1-100).",
+						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"description": "Sıralama: alan:asc|desc. İzinli alanlar: createdAt, updatedAt, validityDate. Varsayılan createdAt:asc.",
+						"schema": { "type": "string", "pattern": "^(createdAt|updatedAt|validityDate)(:(asc|desc))?$" }
+					},
+					{
+						"name": "filter[idNo]",
+						"in": "query",
+						"required": false,
+						"description": "Belge sahibi TCKN/VKN tam eşleşme.",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[type]",
+						"in": "query",
+						"required": false,
+						"description": "Belge türü.",
+						"schema": { "type": "string", "enum": ["unknown", "front", "rear", "accord", "signature", "addressDoc", "activeDoc", "registryDoc", "taxDoc", "signDoc"] }
+					},
+					{
+						"name": "filter[channel]",
+						"in": "query",
+						"required": false,
+						"description": "Yükleme kanalı.",
+						"schema": { "type": "string", "enum": ["manual", "whatsapp", "idv", "accord"] }
+					},
+					{
+						"name": "filter[idCheck]",
+						"in": "query",
+						"required": false,
+						"description": "NVİ kimlik doğrulaması geçti mi.",
+						"schema": { "type": "boolean" }
+					},
+					{
+						"name": "filter[isApproval]",
+						"in": "query",
+						"required": false,
+						"description": "idNo doğrulama durumu.",
+						"schema": { "type": "boolean" }
+					},
+					{
+						"name": "filter[isDisabled]",
+						"in": "query",
+						"required": false,
+						"description": "Geçersizlik durumu. Verilmezse yalnız geçerli kayıtlar döner.",
+						"schema": { "type": "boolean" }
+					},
+					{
+						"name": "filter[startDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; createdAt >= startDate.",
+						"schema": { "type": "string", "format": "date-time" }
+					},
+					{
+						"name": "filter[endDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; createdAt <= endDate.",
+						"schema": { "type": "string", "format": "date-time" }
+					},
+					{
+						"name": "filter[updatedSince]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; yalnız bu tarihte veya sonra güncellenen kayıtlar döner (updatedAt >=).",
+						"schema": { "type": "string", "format": "date-time" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı liste yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/IdentityDocumentListResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/compliance/identity-documents/{id}": {
+			"get": {
+				"operationId": "getComplianceIdentityDocument",
+				"summary": "Kimlik belge kaydı detayı",
+				"description": "Tek belge kaydının geniş halini döner: description ve OCR/doğrulama sonucu (data). Görsel içerik veya görsel referansı dönmez.",
+				"tags": ["Compliance"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Kayıt kimliği (ObjectId).",
+						"schema": { "type": "string", "pattern": "^[a-fA-F0-9]{24}$" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı detay yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/IdentityDocumentDetailResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"404": { "$ref": "#/components/responses/NotFound" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/invoices": {
+			"get": {
+				"operationId": "listInvoices",
+				"summary": "Fatura listesi",
+				"description": "Sistem üzerinden kesilen faturaları sayfalı, filtreli ve sıralı listeler. Kalem satırları (lines) bu uçta dönmez; detay ucundadır. Bilinmeyen filter alanı 400 VALIDATION_FAILED döner.",
+				"tags": ["Invoices"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa numarası (en az 1).",
+						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+					},
+					{
+						"name": "pageSize",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa başına kayıt (1-100).",
+						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"description": "Sıralama: alan:asc|desc. İzinli alanlar: transactionDate, createdAt, updatedAt, payableTotal. Varsayılan transactionDate:asc.",
+						"schema": { "type": "string", "pattern": "^(transactionDate|createdAt|updatedAt|payableTotal)(:(asc|desc))?$" }
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"required": false,
+						"description": "Serbest metin arama. Numerik değer idNo tam eşleşmesi, metin değer müşteri ünvanı (customer.name) içinde arama yapar.",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[idNo]",
+						"in": "query",
+						"required": false,
+						"description": "Müşteri TCKN/VKN tam eşleşme.",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[invoiceNumber]",
+						"in": "query",
+						"required": false,
+						"description": "Fatura numarası tam eşleşme.",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[type]",
+						"in": "query",
+						"required": false,
+						"description": "Fatura türü (invoiceInfo.type).",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[integrator]",
+						"in": "query",
+						"required": false,
+						"description": "Entegratör (invoiceInfo.integrator).",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[module]",
+						"in": "query",
+						"required": false,
+						"description": "Faturanın üretildiği modül.",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[startDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; transactionDate >= startDate.",
+						"schema": { "type": "string", "format": "date-time" }
+					},
+					{
+						"name": "filter[endDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; transactionDate <= endDate.",
+						"schema": { "type": "string", "format": "date-time" }
+					},
+					{
+						"name": "filter[updatedSince]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; yalnız bu tarihte veya sonra güncellenen kayıtlar döner (updatedAt >=).",
+						"schema": { "type": "string", "format": "date-time" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı liste yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/InvoiceListResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/invoices/{id}": {
+			"get": {
+				"operationId": "getInvoice",
+				"summary": "Fatura detayı",
+				"description": "Tek faturanın geniş kaydını döner: tam müşteri bloğu, fatura kalem satırları (lines) ve tam entegratör bilgisi (invoiceInfo). Fatura PDF/görsel içeriği bu uçta yoktur.",
+				"tags": ["Invoices"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Kayıt kimliği (ObjectId).",
+						"schema": { "type": "string", "pattern": "^[a-fA-F0-9]{24}$" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı detay yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/InvoiceDetailResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"404": { "$ref": "#/components/responses/NotFound" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/bank-accounts": {
+			"get": {
+				"operationId": "listBankAccounts",
+				"summary": "Banka hesapları ve bakiyeleri",
+				"description": "Şirketin gerçek banka hesaplarını (bank=true; kasa/pos/kredi hariç) bakiye ve son sorgu bilgisiyle listeler. Arşivli hesaplar varsayılan olarak dönmez; filter[archived]=true ile sorgulanabilir. Bu modelde updatedAt alanı olmadığından updatedSince desteklenmez; tazelik sinyali lastCheckAt alanıdır.",
+				"tags": ["Bank accounts"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa numarası (en az 1).",
+						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+					},
+					{
+						"name": "pageSize",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa başına kayıt (1-100).",
+						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"description": "Sıralama: alan:asc|desc. İzinli alanlar: createdDate, name, balance. Varsayılan createdDate:asc.",
+						"schema": { "type": "string", "pattern": "^(createdDate|name|balance)(:(asc|desc))?$" }
+					},
+					{
+						"name": "q",
+						"in": "query",
+						"required": false,
+						"description": "Hesap adında büyük/küçük harf duyarsız arama.",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[archived]",
+						"in": "query",
+						"required": false,
+						"description": "Arşiv durumu. Verilmezse yalnız arşivsiz hesaplar döner.",
+						"schema": { "type": "boolean" }
+					},
+					{
+						"name": "filter[currency]",
+						"in": "query",
+						"required": false,
+						"description": "Para birimi (büyük harfe normalize edilir).",
+						"schema": { "type": "string" },
+						"example": "TRY"
+					},
+					{
+						"name": "filter[bankCode]",
+						"in": "query",
+						"required": false,
+						"description": "Banka kodu.",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[isApi]",
+						"in": "query",
+						"required": false,
+						"description": "true: yalnız banka entegrasyonu bağlı hesaplar.",
+						"schema": { "type": "boolean" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı liste yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/BankAccountListResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/bank-accounts/{id}": {
+			"get": {
+				"operationId": "getBankAccount",
+				"summary": "Banka hesabı detayı",
+				"description": "Tek banka hesabının geniş kaydını döner: alt hesaplar (subAccounts), bloke/son ödeme günü (expiryDay) ve komisyon bilgisi dahil. Entegrasyon kimlik bilgileri (integrationsData) hiçbir uçta dönmez.",
+				"tags": ["Bank accounts"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Kayıt kimliği (ObjectId).",
+						"schema": { "type": "string", "pattern": "^[a-fA-F0-9]{24}$" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı detay yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/BankAccountDetailResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"404": { "$ref": "#/components/responses/NotFound" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/compliance/sanction-checks": {
+			"get": {
+				"operationId": "listSanctionChecks",
+				"summary": "Yaptırım sorgu geçmişi",
+				"description": "Şirkete ait MASAK/WANTED/PEP sorgu loglarını listeler (en yeni önce, createdAt:desc varsayılanıyla). Sorgu sonucu içeriği (data) bu uçta dönmez; detay ucundadır. Bilinmeyen filter alanı 400 VALIDATION_FAILED döner.",
+				"tags": ["Compliance"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa numarası (en az 1).",
+						"schema": { "type": "integer", "minimum": 1, "default": 1 }
+					},
+					{
+						"name": "pageSize",
+						"in": "query",
+						"required": false,
+						"description": "Sayfa başına kayıt (1-100).",
+						"schema": { "type": "integer", "minimum": 1, "maximum": 100, "default": 25 }
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"description": "Sıralama: alan:asc|desc. İzinli alanlar: createdAt, updatedAt. Varsayılan createdAt:desc.",
+						"schema": { "type": "string", "pattern": "^(createdAt|updatedAt)(:(asc|desc))?$" }
+					},
+					{
+						"name": "filter[idNo]",
+						"in": "query",
+						"required": false,
+						"description": "Sorgulanan TCKN/VKN tam eşleşme (ana filtre).",
+						"schema": { "type": "string" }
+					},
+					{
+						"name": "filter[type]",
+						"in": "query",
+						"required": false,
+						"description": "Sorgu türü (küçük harfe normalize edilir).",
+						"schema": { "type": "string", "enum": ["masak", "wanted", "pep"] }
+					},
+					{
+						"name": "filter[isError]",
+						"in": "query",
+						"required": false,
+						"description": "Hatalı sorgu kayıtlarına göre filtre.",
+						"schema": { "type": "boolean" }
+					},
+					{
+						"name": "filter[startDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; createdAt >= startDate.",
+						"schema": { "type": "string", "format": "date-time" }
+					},
+					{
+						"name": "filter[endDate]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; createdAt <= endDate.",
+						"schema": { "type": "string", "format": "date-time" }
+					},
+					{
+						"name": "filter[updatedSince]",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; yalnız bu tarihte veya sonra güncellenen kayıtlar döner (updatedAt >=).",
+						"schema": { "type": "string", "format": "date-time" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı liste yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/SanctionCheckListResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			},
+			"post": {
+				"operationId": "createSanctionCheck",
+				"summary": "Yaptırım sorgusu tetikleme",
+				"description": "idNo ile MASAK yaptırım listesi sorgusu çalıştırır; nameSurname verilirse ek olarak wanted listesi (TR collation, ad bazlı) sorgulanır. Sonuç log kaydı olarak yazılır (GET /v1/compliance/sanction-checks ile geçmişte görünür) ve eşleşme içerikleriyle birlikte 201 döner.",
+				"tags": ["Compliance"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/SanctionCheckCreateRequest" }
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "Sorgu çalıştırıldı ve log kaydı oluşturuldu.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/SanctionCheckCreateResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/compliance/sanction-checks/{id}": {
+			"get": {
+				"operationId": "getSanctionCheck",
+				"summary": "Yaptırım sorgu kaydı detayı",
+				"description": "Tek sorgu kaydının geniş halini döner: data alanı yaptırım listesi eşleşme içeriğini taşır.",
+				"tags": ["Compliance"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Kayıt kimliği (ObjectId).",
+						"schema": { "type": "string", "pattern": "^[a-fA-F0-9]{24}$" }
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı detay yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/SanctionCheckDetailResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"404": { "$ref": "#/components/responses/NotFound" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		},
+		"/v1/bank-queries": {
+			"post": {
+				"operationId": "triggerBankQueries",
+				"summary": "Banka sorgusu tetikleme",
+				"description": "Şirketin entegre banka hesapları için hareket sorgusu tetikler. accountId verilirse tek hesap, verilmezse tüm entegre hesaplar sırayla çalıştırılır. Cron kilit mekanizmasına saygılıdır: o anda işlenen hesap skipped döner. Not: bu uç gerçek banka API çağrıları yapar ve hesap sayısına bağlı olarak uzun sürebilir.",
+				"tags": ["Bank accounts"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": { "$ref": "#/components/schemas/BankQueryTriggerRequest" }
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Tetikleme tamamlandı (hesap bazında sonuçlar data.results içinde).",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": { "type": "string", "format": "uuid" }
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": { "$ref": "#/components/schemas/BankQueryTriggerResponse" }
+							}
+						}
+					},
+					"400": { "$ref": "#/components/responses/ValidationFailed" },
+					"401": { "$ref": "#/components/responses/Unauthorized" },
+					"404": { "$ref": "#/components/responses/NotFound" },
+					"500": { "$ref": "#/components/responses/InternalError" }
+				}
+			}
+		}
+	},
+	"components": {
+		"securitySchemes": {
+			"BasicAuth": {
+				"type": "http",
+				"scheme": "basic",
+				"description": "Kullanıcı adı apiUserId, parola secretKey. Authorization: Basic base64(apiUserId:secretKey)"
+			}
+		},
+		"schemas": {
+			"CustomerListItem": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Kayıt kimliği (ObjectId)."
+					},
+					"idNo": {
+						"type": "string",
+						"description": "TCKN / VKN / belge numarası. Tam ve maskesiz döner."
+					},
+					"idType": {
+						"type": "string",
+						"enum": ["person", "company"]
+					},
+					"idCardType": {
+						"type": "string",
+						"enum": ["idCard", "passport", "dlCard", "other"],
+						"description": "dlCard = ehliyet."
+					},
+					"nameSurname": {
+						"type": "string"
+					},
+					"phone": {
+						"type": "string",
+						"nullable": true
+					},
+					"email": {
+						"type": "string",
+						"nullable": true
+					},
+					"nationality": {
+						"type": "string",
+						"example": "TR"
+					},
+					"countries": {
+						"type": "string",
+						"nullable": true
+					},
+					"states": {
+						"type": "string",
+						"nullable": true
+					},
+					"cities": {
+						"type": "string",
+						"nullable": true
+					},
+					"labels": {
+						"type": "array",
+						"items": {
+							"type": "string"
+						}
+					},
+					"recordLevel": {
+						"type": "integer",
+						"enum": [0, 1, 2, 3, 4],
+						"description": "0 kayıt yok, 1 normal, 2 güvenli, 3 riskli, 4 yasaklı."
+					},
+					"isVerify": {
+						"type": "boolean",
+						"description": "Müşteri tanı (doğrulama) durumu."
+					},
+					"isValid": {
+						"type": "boolean",
+						"description": "Kimlik doğrulama (TCKN/NVI) durumu."
+					},
+					"isPhoto": {
+						"type": "boolean",
+						"description": "Fotoğraf/belge görseli varlığı."
+					},
+					"saveType": {
+						"type": "string",
+						"enum": ["bank", "manual", "idCard", "accord"],
+						"description": "Kaydın oluşma kaynağı."
+					},
+					"createdDate": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"lastDate": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				}
+			},
+			"CustomerDetail": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/CustomerListItem"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"name": {
+								"type": "string",
+								"nullable": true
+							},
+							"surname": {
+								"type": "string",
+								"nullable": true
+							},
+							"ownerName": {
+								"type": "string",
+								"nullable": true,
+								"description": "Yetkili adı (kurumsal kayıtlarda)."
+							},
+							"birthplace": {
+								"type": "string",
+								"nullable": true
+							},
+							"birthday": {
+								"type": "string",
+								"nullable": true
+							},
+							"year": {
+								"type": "string",
+								"nullable": true
+							},
+							"phone2": {
+								"type": "string",
+								"nullable": true
+							},
+							"taxOffice": {
+								"type": "string",
+								"nullable": true
+							},
+							"registryNo": {
+								"type": "string",
+								"nullable": true,
+								"description": "Ticaret sicil no."
+							},
+							"cmpNo": {
+								"type": "string",
+								"nullable": true,
+								"description": "Kuyum yetki belge no."
+							},
+							"activityName": {
+								"type": "string",
+								"nullable": true,
+								"description": "Faaliyet alanı."
+							},
+							"naceCode": {
+								"type": "string",
+								"nullable": true
+							},
+							"countriesCode": {
+								"type": "string",
+								"nullable": true
+							},
+							"statesCode": {
+								"type": "string",
+								"nullable": true
+							},
+							"address": {
+								"type": "string",
+								"nullable": true
+							},
+							"motherName": {
+								"type": "string",
+								"nullable": true
+							},
+							"fatherName": {
+								"type": "string",
+								"nullable": true
+							},
+							"isAbroad": {
+								"type": "boolean",
+								"nullable": true
+							},
+							"jobName": {
+								"type": "string",
+								"nullable": true,
+								"description": "Meslek."
+							},
+							"ibans": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"bankCodes": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"docTypes": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								},
+								"description": "Geçerli ve var olan belge türleri."
+							},
+							"customerRelation": {
+								"type": "object",
+								"nullable": true,
+								"description": "Kurumsal kayıtta birincil temsilci bilgisi."
+							}
+						}
+					}
+				]
+			},
+			"MetaBase": {
+				"type": "object",
+				"properties": {
+					"requestId": {
+						"type": "string",
+						"format": "uuid"
+					},
+					"timestamp": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": ["requestId", "timestamp"]
+			},
+			"MetaList": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/MetaBase"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"page": {
+								"type": "integer"
+							},
+							"limit": {
+								"type": "integer"
+							},
+							"total": {
+								"type": "integer"
+							},
+							"pages": {
+								"type": "integer"
+							}
+						},
+						"required": ["page", "limit", "total", "pages"]
+					}
+				]
+			},
+			"CustomerListResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/CustomerListItem"
+						}
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaList"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"CustomerDetailResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"$ref": "#/components/schemas/CustomerDetail"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaBase"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"CustomerCreateRequest": {
+				"type": "object",
+				"description": "Yazma uçlarında gövde zarfı: data zorunludur. Salt okunur alanlar (isApproval, isSigned, isDeleted, masakStatus, companiesId, userId, approval*, requirementsSnapshot, printSnapshot, contractVersion, uuid vb.) ve bilinmeyen alanlar 400 döner.",
+				"properties": {
+					"data": {
+						"type": "object",
+						"properties": {
+							"idNo": { "type": "string", "description": "TCKN / VKN / belge numarası (zorunlu)." },
+							"nameSurname": { "type": "string", "description": "Ad soyad / ünvan (zorunlu)." },
+							"idType": { "type": "string", "enum": ["person", "company"], "default": "person" },
+							"idCardType": { "type": "string", "enum": ["idCard", "passport", "dlCard", "other"], "default": "idCard" },
+							"nationality": { "type": "string", "default": "TR" },
+							"birthplace": { "type": "string" },
+							"birthday": { "type": "string" },
+							"phone": { "type": "string" },
+							"phone2": { "type": "string" },
+							"email": { "type": "string" },
+							"iban": { "type": "string" },
+							"taxOffice": { "type": "string" },
+							"registryNo": { "type": "string" },
+							"activityName": { "type": "string" },
+							"naceCode": { "type": "string" },
+							"countriesCode": { "type": "string" },
+							"countries": { "type": "string" },
+							"statesCode": { "type": "string" },
+							"states": { "type": "string" },
+							"cities": { "type": "string" },
+							"address": { "type": "string" },
+							"motherName": { "type": "string" },
+							"fatherName": { "type": "string" },
+							"jobName": { "type": "string" },
+							"isAbroad": { "type": "boolean" },
+							"onlyInvoice": { "type": "boolean", "description": "Yalnız fatura kaydı olarak oluştur." },
+							"customerRelation": { "$ref": "#/components/schemas/CustomerRelation" }
+						},
+						"required": ["idNo", "nameSurname"]
+					}
+				},
+				"required": ["data"]
+			},
+			"CustomerCreateResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "$ref": "#/components/schemas/CustomerListItem" },
+					"meta": { "$ref": "#/components/schemas/MetaBase" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"ErrorDetail": {
+				"type": "object",
+				"properties": {
+					"field": {
+						"type": "string"
+					},
+					"rule": {
+						"type": "string"
+					}
+				}
+			},
+			"ErrorBody": {
+				"type": "object",
+				"properties": {
+					"code": {
+						"type": "string",
+						"enum": ["VALIDATION_FAILED", "AUTH_INVALID_CREDENTIALS", "AUTH_FORBIDDEN", "RESOURCE_NOT_FOUND", "CONFLICT", "UPSTREAM_ERROR", "INTERNAL_ERROR"]
+					},
+					"message": {
+						"type": "string"
+					},
+					"details": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/ErrorDetail"
+						}
+					}
+				},
+				"required": ["code", "message", "details"]
+			},
+			"ErrorResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [false]
+					},
+					"error": {
+						"$ref": "#/components/schemas/ErrorBody"
+					},
+					"traceId": {
+						"type": "string",
+						"format": "uuid",
+						"description": "x-request-id başlığı ile aynı değer."
+					}
+				},
+				"required": ["success", "error", "traceId"]
+			},
+			"BankTransactionListItem": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "Kayıt kimliği (ObjectId)."
+					},
+					"stamp": {
+						"type": "string",
+						"description": "Benzersiz işlem damgası."
+					},
+					"incoming": {
+						"type": "boolean",
+						"description": "true: gelen hareket, false: giden hareket."
+					},
+					"transactionDate": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"amount": {
+						"type": "number",
+						"description": "Hareket tutarı."
+					},
+					"currency": {
+						"type": "string",
+						"example": "TRY"
+					},
+					"exchangeRate": {
+						"type": "number",
+						"description": "İşlem anındaki döviz kuru."
+					},
+					"balance": {
+						"type": "number",
+						"description": "İşlem sonrası bakiye."
+					},
+					"bankCode": {
+						"type": "string",
+						"nullable": true
+					},
+					"code": {
+						"type": "string",
+						"description": "İşlem kodu (EFT vb.)."
+					},
+					"idNo": {
+						"type": "string",
+						"description": "Gönderici TCKN/VKN."
+					},
+					"nameSurname": {
+						"type": "string",
+						"description": "Gönderici ad soyad / ünvan."
+					},
+					"iban": {
+						"type": "string",
+						"nullable": true,
+						"description": "Karşı IBAN."
+					},
+					"description": {
+						"type": "string",
+						"nullable": true,
+						"description": "Banka işlem açıklaması."
+					},
+					"status": {
+						"type": "integer",
+						"enum": [0, 1, 2],
+						"description": "0 bekleyen, 1 işlem yapıldı, 2 yok sayıldı."
+					},
+					"masakStatus": {
+						"type": "integer",
+						"enum": [0, 1, 2],
+						"description": "0 sorgulanmadı, 1 sorun yok, 2 sorunlu."
+					},
+					"fundsNature": {
+						"type": "string",
+						"nullable": true,
+						"description": "İşlemin mahiyeti."
+					},
+					"isCheck": {
+						"type": "boolean",
+						"description": "Mahsuplaşma / gider pusulası durumu."
+					},
+					"invoiceNumber": {
+						"type": "string",
+						"nullable": true,
+						"description": "Bağlı fatura numarası (varsa)."
+					},
+					"createdDate": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				}
+			},
+			"InvoiceInfo": {
+				"type": "object",
+				"properties": {
+					"integrator": { "type": "string", "nullable": true },
+					"type": { "type": "string", "nullable": true },
+					"uuid": { "type": "string", "nullable": true },
+					"invoiceNumber": { "type": "string", "nullable": true },
+					"taxId": { "type": "string", "nullable": true },
+					"status": { "type": "boolean", "nullable": true }
+				}
+			},
+			"ExpenseData": {
+				"type": "object",
+				"properties": {
+					"customerInfo": { "type": "object", "nullable": true },
+					"serial": { "type": "string", "nullable": true },
+					"attribute": { "type": "string", "nullable": true },
+					"taxId": { "type": "string", "nullable": true },
+					"number": { "type": "string", "nullable": true },
+					"quantity": { "type": "number", "nullable": true },
+					"price": { "type": "number", "nullable": true, "description": "Birim fiyatı / kur." }
+				}
+			},
+			"MasakInfo": {
+				"type": "object",
+				"description": "İşlem göndericisinin idNo'suna ait en son MASAK/WANTED/PEP sorgu kaydının özeti. Hiç sorgulanmadıysa status 0, lastQueriedAt null, types boş, data null döner.",
+				"properties": {
+					"status": {
+						"type": "integer",
+						"enum": [0, 1, 2],
+						"description": "0 sorgulanmadı, 1 sorun yok, 2 sorunlu."
+					},
+					"lastQueriedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true,
+						"description": "En son sorgu zamanı."
+					},
+					"types": {
+						"type": "array",
+						"items": { "type": "string" },
+						"description": "Sorgu türleri (masak, wanted, pep)."
+					},
+					"isError": {
+						"type": "boolean"
+					},
+					"data": {
+						"type": "object",
+						"nullable": true,
+						"description": "Sorgu sonucu detayı (yaptırım listesi eşleşme içeriği)."
+					}
+				},
+				"required": ["status", "lastQueriedAt", "types", "isError", "data"]
+			},
+			"BankTransactionDetail": {
+				"allOf": [
+					{
+						"$ref": "#/components/schemas/BankTransactionListItem"
+					},
+					{
+						"type": "object",
+						"properties": {
+							"comment": {
+								"type": "string",
+								"nullable": true,
+								"description": "Sarraf notu."
+							},
+							"summaryInfo": {
+								"type": "object",
+								"nullable": true,
+								"description": "Otomasyon için kısa özet bilgiler."
+							},
+							"expenseData": {
+								"$ref": "#/components/schemas/ExpenseData"
+							},
+							"invoiceInfo": {
+								"$ref": "#/components/schemas/InvoiceInfo"
+							},
+							"masak": {
+								"$ref": "#/components/schemas/MasakInfo"
+							}
+						}
+					}
+				]
+			},
+			"BankTransactionListResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/BankTransactionListItem"
+						}
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaList"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"BankTransactionDetailResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"$ref": "#/components/schemas/BankTransactionDetail"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaBase"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"VerificationListItem": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string", "description": "Kayıt kimliği (ObjectId)." },
+					"idNo": { "type": "string", "description": "TCKN / VKN / belge numarası." },
+					"idType": { "type": "string", "enum": ["person", "company"] },
+					"idCardType": { "type": "string", "enum": ["idCard", "passport", "dlCard", "other"] },
+					"nameSurname": { "type": "string" },
+					"phone": { "type": "string", "nullable": true },
+					"email": { "type": "string", "nullable": true },
+					"nationality": { "type": "string", "example": "TR" },
+					"countries": { "type": "string", "nullable": true },
+					"states": { "type": "string", "nullable": true },
+					"cities": { "type": "string", "nullable": true },
+					"masakStatus": { "type": "integer", "enum": [0, 1, 2], "description": "0 sorgulanmadı, 1 sorun yok, 2 sorunlu." },
+					"isApproval": { "type": "boolean", "description": "Form onaylandı mı." },
+					"isSigned": { "type": "boolean", "description": "Form imzalı mı." },
+					"onlyInvoice": { "type": "boolean", "nullable": true, "description": "Yalnız fatura kaydı mı." },
+					"contractVersion": { "type": "string", "nullable": true },
+					"createdAt": { "type": "string", "format": "date-time" },
+					"updatedAt": { "type": "string", "format": "date-time" }
+				}
+			},
+			"CustomerRelation": {
+				"type": "object",
+				"description": "Kurumsal formda temsilci/ortak/gerçek faydalanıcı bilgisi.",
+				"properties": {
+					"types": { "type": "string", "enum": ["representative", "shareholder", "beneficialOwner"] },
+					"nameSurname": { "type": "string", "nullable": true },
+					"nationality": { "type": "string", "nullable": true },
+					"idCardType": { "type": "string", "nullable": true },
+					"idNo": { "type": "string", "nullable": true },
+					"birthplace": { "type": "string", "nullable": true },
+					"birthday": { "type": "string", "nullable": true },
+					"phone": { "type": "string", "nullable": true },
+					"email": { "type": "string", "nullable": true },
+					"beneficialDescription": { "type": "string", "nullable": true },
+					"title": { "type": "string", "nullable": true },
+					"authorityStartDate": { "type": "string", "format": "date-time", "nullable": true },
+					"authorityEndDate": { "type": "string", "format": "date-time", "nullable": true },
+					"isPrimary": { "type": "boolean", "nullable": true }
+				}
+			},
+			"CompanyDocumentMeta": {
+				"type": "object",
+				"nullable": true,
+				"description": "Belge içeriği dönmez; yalnız dosya metası.",
+				"properties": {
+					"fileName": { "type": "string", "nullable": true },
+					"mimeType": { "type": "string", "nullable": true },
+					"size": { "type": "number", "nullable": true }
+				}
+			},
+			"CompanyDocumentsMeta": {
+				"type": "object",
+				"properties": {
+					"taxDoc": { "$ref": "#/components/schemas/CompanyDocumentMeta" },
+					"activeDoc": { "$ref": "#/components/schemas/CompanyDocumentMeta" },
+					"registryDoc": { "$ref": "#/components/schemas/CompanyDocumentMeta" },
+					"signDoc": { "$ref": "#/components/schemas/CompanyDocumentMeta" }
+				}
+			},
+			"RequirementsSnapshot": {
+				"type": "object",
+				"description": "Formun doldurulduğu andaki zorunluluk ayarlarının anlık görüntüsü.",
+				"properties": {
+					"formReq": { "type": "array", "items": { "type": "string" } },
+					"companyFormReq": { "type": "array", "items": { "type": "string" } },
+					"companyReq": { "type": "array", "items": { "type": "string" } },
+					"signatureImage": { "type": "boolean", "nullable": true },
+					"smsVerify": { "type": "boolean", "nullable": true },
+					"addressDoc": { "type": "boolean", "nullable": true },
+					"addressDocVerify": { "type": "boolean", "nullable": true },
+					"amountOption": { "type": "boolean", "nullable": true },
+					"customerVerify": { "type": "boolean", "nullable": true }
+				}
+			},
+			"VerificationDetail": {
+				"allOf": [
+					{ "$ref": "#/components/schemas/VerificationListItem" },
+					{
+						"type": "object",
+						"properties": {
+							"birthplace": { "type": "string", "nullable": true },
+							"birthday": { "type": "string", "nullable": true },
+							"phone2": { "type": "string", "nullable": true },
+							"taxOffice": { "type": "string", "nullable": true },
+							"registryNo": { "type": "string", "nullable": true },
+							"activityName": { "type": "string", "nullable": true },
+							"naceCode": { "type": "string", "nullable": true },
+							"iban": { "type": "string", "nullable": true },
+							"address": { "type": "string", "nullable": true },
+							"motherName": { "type": "string", "nullable": true },
+							"fatherName": { "type": "string", "nullable": true },
+							"isAbroad": { "type": "boolean", "nullable": true },
+							"jobName": { "type": "string", "nullable": true },
+							"isDeleted": { "type": "boolean", "description": "Form silinmiş mi (detayda görünür)." },
+							"customerRelation": { "$ref": "#/components/schemas/CustomerRelation" },
+							"companyDocuments": { "$ref": "#/components/schemas/CompanyDocumentsMeta" },
+							"requirementsSnapshot": { "$ref": "#/components/schemas/RequirementsSnapshot" }
+						}
+					}
+				]
+			},
+			"IdentityDocumentListItem": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string", "description": "Kayıt kimliği (ObjectId)." },
+					"idNo": { "type": "string", "description": "Belge sahibi TCKN/VKN." },
+					"type": { "type": "string", "enum": ["unknown", "front", "rear", "accord", "signature", "addressDoc", "activeDoc", "registryDoc", "taxDoc", "signDoc"] },
+					"channel": { "type": "string", "enum": ["manual", "whatsapp", "idv", "accord"], "description": "Yükleme kanalı." },
+					"fileType": { "type": "string", "nullable": true },
+					"validityDate": { "type": "string", "format": "date-time", "nullable": true, "description": "Belge geçerlilik tarihi." },
+					"idCheck": { "type": "boolean", "description": "NVİ doğrulaması geçti mi." },
+					"isApproval": { "type": "boolean", "description": "idNo doğrulaması yapıldı mı." },
+					"isDisabled": { "type": "boolean", "description": "Belge geçersiz mi." },
+					"createdAt": { "type": "string", "format": "date-time" },
+					"updatedAt": { "type": "string", "format": "date-time" }
+				}
+			},
+			"IdentityDocumentDetail": {
+				"allOf": [
+					{ "$ref": "#/components/schemas/IdentityDocumentListItem" },
+					{
+						"type": "object",
+						"properties": {
+							"description": { "type": "string", "nullable": true },
+							"data": { "type": "object", "nullable": true, "description": "OCR / doğrulama çıkarım sonucu." }
+						}
+					}
+				]
+			},
+			"VerificationListResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "type": "array", "items": { "$ref": "#/components/schemas/VerificationListItem" } },
+					"meta": { "$ref": "#/components/schemas/MetaList" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"VerificationDetailResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "$ref": "#/components/schemas/VerificationDetail" },
+					"meta": { "$ref": "#/components/schemas/MetaBase" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"IdentityDocumentListResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "type": "array", "items": { "$ref": "#/components/schemas/IdentityDocumentListItem" } },
+					"meta": { "$ref": "#/components/schemas/MetaList" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"IdentityDocumentDetailResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "$ref": "#/components/schemas/IdentityDocumentDetail" },
+					"meta": { "$ref": "#/components/schemas/MetaBase" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"InvoiceCustomerSummary": {
+				"type": "object",
+				"properties": {
+					"taxNumber": { "type": "string", "nullable": true, "description": "Müşteri vergi/kimlik numarası." },
+					"name": { "type": "string", "nullable": true, "description": "Müşteri adı / ünvanı." }
+				}
+			},
+			"InvoiceCustomer": {
+				"allOf": [
+					{ "$ref": "#/components/schemas/InvoiceCustomerSummary" },
+					{
+						"type": "object",
+						"properties": {
+							"taxOffice": { "type": "string", "nullable": true },
+							"address": { "type": "string", "nullable": true },
+							"district": { "type": "string", "nullable": true },
+							"city": { "type": "string", "nullable": true },
+							"phone": { "type": "string", "nullable": true },
+							"mail": { "type": "string", "nullable": true },
+							"webSite": { "type": "string", "nullable": true },
+							"country": { "type": "string", "nullable": true }
+						}
+					}
+				]
+			},
+			"InvoiceLine": {
+				"type": "object",
+				"properties": {
+					"name": { "type": "string", "nullable": true },
+					"quantity": { "type": "number" },
+					"unitType": { "type": "string", "nullable": true },
+					"stockCode": { "type": "string", "nullable": true },
+					"price": { "type": "number" },
+					"amount": { "type": "number", "description": "KDV ve iskontosuz net tutar." },
+					"lineTotal": { "type": "number" },
+					"kdvPercent": { "type": "number" },
+					"kdvTotal": { "type": "number" },
+					"allowancePrice": { "type": "number" },
+					"allowanceTotal": { "type": "number" },
+					"ozelMatrahTotal": { "type": "number" },
+					"isExtra": { "type": "boolean" },
+					"isDefault": { "type": "boolean" },
+					"isLabor": { "type": "boolean", "description": "İşçilik kalemi mi." }
+				}
+			},
+			"InvoiceListItem": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string", "description": "Kayıt kimliği (ObjectId)." },
+					"transactionDate": { "type": "string", "format": "date-time", "description": "Fatura / resmileştirme tarihi." },
+					"invoiceNumber": { "type": "string", "nullable": true },
+					"invoiceType": { "type": "string", "nullable": true },
+					"integrator": { "type": "string", "nullable": true },
+					"invoiceStatus": { "type": "boolean", "nullable": true },
+					"linesTotal": { "type": "number" },
+					"kdvTotal": { "type": "number" },
+					"allowanceTotal": { "type": "number" },
+					"payableTotal": { "type": "number" },
+					"customer": { "$ref": "#/components/schemas/InvoiceCustomerSummary" },
+					"idNo": { "type": "string", "nullable": true, "description": "Müşteri TCKN/VKN." },
+					"module": { "type": "string", "nullable": true },
+					"createdAt": { "type": "string", "format": "date-time" },
+					"updatedAt": { "type": "string", "format": "date-time" }
+				}
+			},
+			"InvoiceDetail": {
+				"allOf": [
+					{ "$ref": "#/components/schemas/InvoiceListItem" },
+					{
+						"type": "object",
+						"properties": {
+							"customer": { "$ref": "#/components/schemas/InvoiceCustomer" },
+							"invoiceInfo": { "$ref": "#/components/schemas/InvoiceInfo" },
+							"lines": { "type": "array", "items": { "$ref": "#/components/schemas/InvoiceLine" } }
+						}
+					}
+				]
+			},
+			"InvoiceListResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "type": "array", "items": { "$ref": "#/components/schemas/InvoiceListItem" } },
+					"meta": { "$ref": "#/components/schemas/MetaList" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"InvoiceDetailResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "$ref": "#/components/schemas/InvoiceDetail" },
+					"meta": { "$ref": "#/components/schemas/MetaBase" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"BankAccountListItem": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string", "description": "Kayıt kimliği (ObjectId)." },
+					"name": { "type": "string", "description": "Hesap adı." },
+					"bankName": { "type": "string", "nullable": true },
+					"bankCode": { "type": "string", "nullable": true },
+					"code": { "type": "string", "nullable": true, "description": "Hesap kodu." },
+					"iban": { "type": "string", "nullable": true },
+					"currency": { "type": "string", "example": "TRY" },
+					"type": { "type": "string", "enum": ["cash", "bank", "pos", "credit"] },
+					"default": { "type": "boolean", "description": "Varsayılan hesap mı." },
+					"isApi": { "type": "boolean", "description": "Banka entegrasyonu bağlı mı." },
+					"isDemo": { "type": "boolean", "description": "Demo hesap mı." },
+					"limit": { "type": "number", "description": "Sorgulama limiti." },
+					"balance": { "type": "number", "description": "Güncel bakiye (son sorgudaki)." },
+					"lastCheckAt": { "type": "string", "format": "date-time", "nullable": true, "description": "Son banka sorgusu zamanı." },
+					"lastTransactionAt": { "type": "string", "format": "date-time", "nullable": true, "description": "Son çekilen hareketin zamanı." },
+					"lastCheckStatus": { "type": "boolean", "nullable": true, "description": "Son sorgu başarılı mı." },
+					"lastCheckMessage": { "type": "string", "nullable": true, "description": "Banka cevabı." },
+					"lastCheckSize": { "type": "integer", "description": "Son sorguda çekilen hareket sayısı." },
+					"createdDate": { "type": "string", "format": "date-time" }
+				}
+			},
+			"BankAccountDetail": {
+				"allOf": [
+					{ "$ref": "#/components/schemas/BankAccountListItem" },
+					{
+						"type": "object",
+						"properties": {
+							"subAccounts": { "type": "array", "items": { "type": "object" }, "description": "Alt hesaplar (kendi bakiye bilgileriyle)." },
+							"expiryDay": { "type": "integer", "description": "POS ise bloke, kredi ise son ödeme günü." },
+							"commission": { "type": "number", "description": "POS komisyon tutarı." },
+							"archived": { "type": "boolean" }
+						}
+					}
+				]
+			},
+			"BankAccountListResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "type": "array", "items": { "$ref": "#/components/schemas/BankAccountListItem" } },
+					"meta": { "$ref": "#/components/schemas/MetaList" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"BankAccountDetailResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "$ref": "#/components/schemas/BankAccountDetail" },
+					"meta": { "$ref": "#/components/schemas/MetaBase" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"SanctionCheckListItem": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string", "description": "Kayıt kimliği (ObjectId)." },
+					"idNo": { "type": "string", "description": "Sorgulanan TCKN/VKN." },
+					"types": { "type": "array", "items": { "type": "string" }, "description": "Sorgu türleri (masak, wanted, pep)." },
+					"isError": { "type": "boolean", "description": "Sorgu hata ile mi sonuçlandı." },
+					"createdAt": { "type": "string", "format": "date-time" },
+					"updatedAt": { "type": "string", "format": "date-time" }
+				}
+			},
+			"SanctionCheckDetail": {
+				"allOf": [
+					{ "$ref": "#/components/schemas/SanctionCheckListItem" },
+					{
+						"type": "object",
+						"properties": {
+							"data": { "type": "object", "nullable": true, "description": "Sorgu sonucu — yaptırım listesi eşleşme içeriği." }
+						}
+					}
+				]
+			},
+			"SanctionCheckListResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "type": "array", "items": { "$ref": "#/components/schemas/SanctionCheckListItem" } },
+					"meta": { "$ref": "#/components/schemas/MetaList" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"SanctionCheckDetailResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "$ref": "#/components/schemas/SanctionCheckDetail" },
+					"meta": { "$ref": "#/components/schemas/MetaBase" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"SanctionCheckCreateRequest": {
+				"type": "object",
+				"description": "Yazma uçlarında gövde zarfı: data zorunludur.",
+				"properties": {
+					"data": {
+						"type": "object",
+						"properties": {
+							"idNo": { "type": "string", "description": "Sorgulanacak TCKN/VKN/belge numarası." },
+							"nameSurname": { "type": "string", "description": "Wanted listesi sorgusu için ad soyad (opsiyonel; verilmezse wanted atlanır)." }
+						},
+						"required": ["idNo"]
+					}
+				},
+				"required": ["data"]
+			},
+			"SanctionCheckCreateResult": {
+				"type": "object",
+				"properties": {
+					"id": { "type": "string", "description": "Oluşan log kaydının kimliği." },
+					"idNo": { "type": "string" },
+					"types": { "type": "array", "items": { "type": "string" }, "description": "Çalıştırılan sorgu türleri (masak, wanted)." },
+					"isError": { "type": "boolean", "description": "Herhangi bir listede eşleşme bulundu mu." },
+					"matches": {
+						"type": "object",
+						"properties": {
+							"masak": { "type": "array", "items": { "type": "object" }, "description": "MASAK listesi eşleşme içerikleri." },
+							"wanted": { "type": "array", "items": { "type": "object" }, "description": "Wanted listesi eşleşme içerikleri." }
+						}
+					},
+					"checkedAt": { "type": "string", "format": "date-time" }
+				},
+				"required": ["id", "idNo", "types", "isError", "matches", "checkedAt"]
+			},
+			"SanctionCheckCreateResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "$ref": "#/components/schemas/SanctionCheckCreateResult" },
+					"meta": { "$ref": "#/components/schemas/MetaBase" }
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"BankQueryTriggerRequest": {
+				"type": "object",
+				"description": "Yazma uçlarında gövde zarfı: data zorunludur (boş nesne olabilir).",
+				"properties": {
+					"data": {
+						"type": "object",
+						"properties": {
+							"accountId": { "type": "string", "description": "Yalnız bu hesabı tetikle (opsiyonel; boş bırakılırsa tüm entegre hesaplar)." }
+						}
+					}
+				},
+				"required": ["data"]
+			},
+			"BankQueryResultItem": {
+				"type": "object",
+				"properties": {
+					"accountId": { "type": "string" },
+					"name": { "type": "string", "nullable": true },
+					"status": { "type": "string", "enum": ["success", "failed", "skipped"], "description": "skipped: hesap o anda başka bir sorgu tarafından işleniyor." },
+					"message": { "type": "string", "nullable": true, "description": "Banka/işlem mesajı (varsa)." }
+				},
+				"required": ["accountId", "status"]
+			},
+			"BankQueryTriggerResult": {
+				"type": "object",
+				"properties": {
+					"total": { "type": "integer", "description": "Aday (entegre) hesap sayısı." },
+					"triggered": { "type": "integer", "description": "Kilit alınıp çalıştırılan hesap sayısı." },
+					"succeeded": { "type": "integer" },
+					"failed": { "type": "integer" },
+					"skipped": { "type": "integer" },
+					"results": { "type": "array", "items": { "$ref": "#/components/schemas/BankQueryResultItem" } },
+					"ranAt": { "type": "string", "format": "date-time" }
+				},
+				"required": ["total", "triggered", "succeeded", "failed", "skipped", "results", "ranAt"]
+			},
+			"BankQueryTriggerResponse": {
+				"type": "object",
+				"properties": {
+					"success": { "type": "boolean", "enum": [true] },
+					"data": { "$ref": "#/components/schemas/BankQueryTriggerResult" },
+					"meta": { "$ref": "#/components/schemas/MetaBase" }
+				},
+				"required": ["success", "data", "meta"]
+			}
+		},
+		"responses": {
+			"ValidationFailed": {
+				"description": "Doğrulama hatası (geçersiz parametre).",
+				"content": {
+					"application/json": {
+						"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+					}
+				}
+			},
+			"Unauthorized": {
+				"description": "Kimlik doğrulama başarısız.",
+				"content": {
+					"application/json": {
+						"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+					}
+				}
+			},
+			"NotFound": {
+				"description": "Kayıt bulunamadı.",
+				"content": {
+					"application/json": {
+						"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+					}
+				}
+			},
+			"InternalError": {
+				"description": "Beklenmeyen sunucu hatası.",
+				"content": {
+					"application/json": {
+						"schema": { "$ref": "#/components/schemas/ErrorResponse" }
+					}
+				}
+			}
+		}
+	}
+}

@@ -9,47 +9,56 @@
   },
   "favicon": "/favicon.png",
   "navigation": {
-    "pages": [
+    "tabs": [
       {
-        "group": "Başlangıç",
-        "pages": [
-          "index",
-          "quickstart"
+        "tab": "Dokümantasyon",
+        "groups": [
+          {
+            "group": "Başlangıç",
+            "pages": [
+              "index",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "API'ye Giriş",
+            "pages": [
+              "api-reference/genel-bakis"
+            ]
+          },
+          {
+            "group": "Müşteriler",
+            "pages": [
+              "api-reference/musteriler"
+            ]
+          },
+          {
+            "group": "Banka Entegrasyonu",
+            "pages": [
+              "api-reference/banka-hesaplari",
+              "api-reference/banka-hareketleri",
+              "api-reference/banka-sorgu-tetikleme"
+            ]
+          },
+          {
+            "group": "Faturalar",
+            "pages": [
+              "api-reference/faturalar"
+            ]
+          },
+          {
+            "group": "Uyum (Compliance)",
+            "pages": [
+              "api-reference/musteri-tani-formlari",
+              "api-reference/kimlik-belgeleri",
+              "api-reference/yaptirim-sorgulari"
+            ]
+          }
         ]
       },
       {
-        "group": "API'ye Giriş",
-        "pages": [
-          "api-reference/genel-bakis"
-        ]
-      },
-      {
-        "group": "Müşteriler",
-        "pages": [
-          "api-reference/musteriler"
-        ]
-      },
-      {
-        "group": "Banka Entegrasyonu",
-        "pages": [
-          "api-reference/banka-hesaplari",
-          "api-reference/banka-hareketleri",
-          "api-reference/banka-sorgu-tetikleme"
-        ]
-      },
-      {
-        "group": "Faturalar",
-        "pages": [
-          "api-reference/faturalar"
-        ]
-      },
-      {
-        "group": "Uyum (Compliance)",
-        "pages": [
-          "api-reference/musteri-tani-formlari",
-          "api-reference/kimlik-belgeleri",
-          "api-reference/yaptirim-sorgulari"
-        ]
+        "tab": "API Referansı",
+        "openapi": "api-reference/openapi.json"
       }
     ],
     "global": {
@@ -88,6 +97,7 @@
     "options": [
       "copy",
       "view",
+      "download-spec",
       "chatgpt",
       "claude",
       "perplexity",
