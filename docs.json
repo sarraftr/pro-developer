@@ -92,7 +92,7 @@
   "navbar": {
     "links": [
       {
-        "label": "Support",
+        "label": "Destek",
         "href": "mailto:destek@sarraf.pro"
       }
     ],
@@ -118,7 +118,8 @@
   "footer": {
     "socials": {
       "github": "https://github.com/sarraftr",
-      "linkedin": "https://linkedin.com/company/sarrafpro"
+      "linkedin": "https://linkedin.com/company/sarrafpro",
+      "instagram": "https://www.instagram.com/sarrafpro"
     }
   },
   "icons": {
