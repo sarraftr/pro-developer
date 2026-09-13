@@ -281,7 +281,7 @@
 			"get": {
 				"operationId": "getCustomer",
 				"summary": "Cari hesap detayı",
-				"description": "Tek cari hesabın geniş kaydını döner. PII alanları (motherName, fatherName, birthplace vb.) yalnız bu uçta yer alır.",
+				"description": "Tek cari hesabın geniş kaydını döner. PII alanları (motherName, fatherName, birthplace vb.) yalnız bu uçta yer alır. Ayrıca gömülü uyum özeti döner: verification (müşteri tanı formu durumu; idNo yoksa null), masak (idNo bazlı son sorgu özeti; hiç sorgu yoksa null) ve events (sicil olayı sayısı + en yeni olay; tam liste GET /v1/customers/events ile alınır).",
 				"tags": ["Customers"],
 				"parameters": [
 					{
@@ -1959,10 +1959,27 @@
 								"type": "object",
 								"nullable": true,
 								"description": "Kurumsal kayıtta birincil temsilci bilgisi."
+							},
+							"verification": {
+								"$ref": "#/components/schemas/ComplianceCheckVerification"
+							},
+							"masak": {
+								"$ref": "#/components/schemas/ComplianceCheckMasak"
+							},
+							"events": {
+								"$ref": "#/components/schemas/CustomerEventsSummary"
 							}
 						}
 					}
 				]
+			},
+			"CustomerEventsSummary": {
+				"type": "object",
+				"description": "Müşteri sicil olayı özeti — toplam olay sayısı ve en yeni olay (yoksa null). Tam liste GET /v1/customers/events ile alınır.",
+				"properties": {
+					"count": { "type": "integer" },
+					"latest": { "$ref": "#/components/schemas/ComplianceCheckEvent" }
+				}
 			},
 			"MetaBase": {
 				"type": "object",

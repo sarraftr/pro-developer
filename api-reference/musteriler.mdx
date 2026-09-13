@@ -41,6 +41,16 @@ Tek cari hesabın geniş kaydını döner. Liste alanlarına ek olarak:
   Kimlik numarası (`idNo`) fatura/eşleştirme gereksinimleri nedeniyle **tam ve maskesiz** döner. PII alanları yalnızca detay ucunda yer alır.
 </Note>
 
+### Gömülü uyum özeti
+
+Detay cevabı, ek uç çağırmaya gerek bırakmayan üç uyum bölümü de içerir:
+
+| Bölüm | İçerik |
+|---|---|
+| `verification` | Müşteri tanı formu durumu: `latestId`, `isApproval`, `isSigned`, `lastFormAt`, `hasPendingForm` |
+| `masak` | idNo bazlı son MASAK sorgusu: `lastQueriedAt`, `types`, `isError` — hiç sorgu yoksa `null` |
+| `events` | Sicil özeti: `count` (toplam olay) ve `latest` (en yeni olay, yoksa `null`). Tam liste için [Müşteri sicil olayları](/api-reference/musteri-sicil-olaylari) |
+
 ## `POST /v1/customers` — hızlı cari ekleme
 
 Doğrudan kullanılabilir cari kaydı oluşturur; kayıt `saveType: "api"` ile doğar ve entegrasyonunuz tarafından anında kullanılabilir. Müşteri tanı (KYC) formu açmak için [Müşteri tanı formları](/api-reference/musteri-tani-formlari) sayfasındaki `POST /v1/customers/verifications` ucunu kullanın.
