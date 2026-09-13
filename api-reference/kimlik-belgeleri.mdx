@@ -45,3 +45,59 @@ Liste alanlarına ek olarak `description` ve **`data`** (OCR / doğrulama çıka
 <Warning>
   Görsel referansları (`imageUrl`, `imageId` vb.) ve AI ham çıktıları hiçbir uçta dönmez. Belge içeriği indirme ucu bu sürümde yoktur.
 </Warning>
+
+## `POST /v1/compliance/identity-documents` — belge görseli yükleme
+
+Müşteri tanı (accord) akışı için kimlik veya pasaport görseli yükler. Görsel, belge servisine güvenle taşınır ve belge kaydı oluşur.
+
+### İstek gövdesi
+
+```json
+{
+  "data": {
+    "idNo": "1976926558",
+    "type": "front",
+    "fileName": "kimlik-on.png",
+    "mimeType": "image/png",
+    "content": "iVBORw0KGgo...",
+    "verificationId": "6a9c7e2bf2fb39feccb3480b"
+  }
+}
+```
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `idNo` | string | **Zorunlu** — belge sahibi TCKN/VKN/pasaport no |
+| `type` | string | **Zorunlu** — `front` veya `rear` (pasaport için yalnız `front` yeterlidir) |
+| `fileName` | string | **Zorunlu** |
+| `mimeType` | string | `image/jpeg` veya `image/png` |
+| `content` | string | **Zorunlu** — base64 görsel içeriği, en fazla 8 MiB |
+| `verificationId` | string | Opsiyonel — kaydın ilişkilendirileceği müşteri tanı formu; şirketinize ait olmalı |
+
+### Cevap — `201`
+
+Yalnız belge metası döner; görsel içerik veya görsel adresi (`imageUrl`) **hiçbir zaman** dönmez:
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6aa6aaf0da99cd3fa911edc7",
+    "idNo": "1976926558",
+    "type": "front",
+    "channel": "accord",
+    "fileName": "kimlik-on.png",
+    "mimeType": "image/png",
+    "createdAt": "2026-09-13T12:00:00.000Z",
+    "updatedAt": "2026-09-13T12:00:00.000Z"
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+| Hata | HTTP | Açıklama |
+|---|---|---|
+| Zorunlu alan eksik / tür hatası / boyut aşımı | 400 | `VALIDATION_FAILED` |
+| `verificationId` bulunamadı | 404 | `RESOURCE_NOT_FOUND` |
+| Belge yükleme servisi hatası | 502 | `UPSTREAM_ERROR` |
+

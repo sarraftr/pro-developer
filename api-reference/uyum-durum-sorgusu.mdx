@@ -1,0 +1,90 @@
+---
+title: "Uyum durum sorgusu"
+description: "idNo veya ad soyad ile tek çağrıda kayıt, sicil ve doğrulama durumu"
+---
+
+Uyum durum sorgusu, entegrasyonunuzun en sık ihtiyaç duyacağı uçtur: bir kimlik numarası (TCKN/VKN/pasaport veya belge no) ya da ad soyad ile müşterinin SarrafPro'daki uyum durumunu tek cevapta döner.
+
+## `GET /v1/compliance/check`
+
+### Parametreler
+
+| Parametre | Tür | Kural |
+|---|---|---|
+| `idNo` | string | TCKN/VKN/pasaport veya belge numarası — `nameSurname` ile birlikte **en az biri zorunlu** |
+| `nameSurname` | string | Ad soyad / ünvan (büyük-küçük harf duyarsız arama) |
+
+<Note>
+  İki parametre de verilmezse istek `400 VALIDATION_FAILED` (`requiredOneOf`) ile reddedilir.
+</Note>
+
+### Cevap — `200`
+
+Kayıt varsa:
+
+```json
+{
+  "success": true,
+  "data": {
+    "exists": true,
+    "customer": {
+      "id": "6a39d846afed5527f1c85f3b",
+      "idNo": "1976926558",
+      "idType": "person",
+      "idCardType": "idCard",
+      "nameSurname": "ÖRNEK KİŞİ",
+      "recordLevel": 0,
+      "isVerify": false,
+      "isValid": false
+    },
+    "recordLevel": 0,
+    "events": [],
+    "masak": {
+      "lastQueriedAt": "2026-09-05T19:31:24.915Z",
+      "types": ["masak"],
+      "isError": false
+    },
+    "verification": {
+      "latestId": "6a9c7e2bf2fb39feccb3480b",
+      "isApproval": false,
+      "isSigned": false,
+      "lastFormAt": "2026-09-05T20:30:00.000Z",
+      "hasPendingForm": true
+    }
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+Kayıt yoksa:
+
+```json
+{
+  "success": true,
+  "data": {
+    "exists": false,
+    "customer": null,
+    "recordLevel": null,
+    "events": [],
+    "masak": null,
+    "verification": null
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+### Alan sözlüğü
+
+| Alan | Anlam |
+|---|---|
+| `exists` | Müşteri kaydı var mı |
+| `customer` | Dar müşteri kaydı (yoksa `null`) |
+| `recordLevel` | Sicil seviyesi: `0` kayıt yok, `1` normal, `2` güvenli, `3` riskli, `4` yasaklı |
+| `events` | Sicil olayları (en yeni önce, en fazla 25) |
+| `masak` | idNo bazlı son MASAK sorgusu (hiç yoksa `null`) |
+| `verification.hasPendingForm` | Onay bekleyen müşteri tanı formu var mı |
+| `verification.isApproval` | Son form onaylı mı |
+
+<Tip>
+  Kayıt yoksa sonraki adım: [Müşteri oluşturma](/api-reference/musteriler) ile müşteri tanı formu açın, ardından [belge yükleme](/api-reference/kimlik-belgeleri) ile kimlik/pasaport görselini gönderin.
+</Tip>

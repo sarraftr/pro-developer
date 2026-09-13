@@ -61,20 +61,3 @@ Liste alanlarına ek olarak:
   Bu sürümde faturalar **yalnızca görüntülenebilir**; fatura oluşturma/gönderme API'de yoktur.
 </Note>
 
-## `GET /v1/invoice-variables` — kalem şablonları
-
-Şirketinizin fatura kalem şablonlarını (ayar/saflık/işçilik tanımları) görüntüler. Varsayılan listede pasif/silinmiş şablonlar dönmez.
-
-### Sorgu parametreleri
-
-| Parametre | Tür | Açıklama |
-|---|---|---|
-| `filter[statusType]` | string | `all`, `invoice`, `expense`, `passive` (varsayılan listede pasifler dönmez) |
-| `filter[material]` | string | `gold`, `silver`, `platin`, `paladyum`, `usd`, `eur`, `try` |
-| `filter[isDefault]` | boolean | Varsayılan şablon |
-| `q` | string | Kalem adında arama |
-
-### Cevap alanları
-
-`id`, `key`, `title`, `lineName`, `material`, `statusType`, `type`, `exchange` (saflık), `vatRate`, `unitType`, `laborDisabled`, `laborName`, `laborType`, `stockCode`, `isDefault`, `isManual`, `order`, `words`, `createdAt`, `updatedAt`
-
