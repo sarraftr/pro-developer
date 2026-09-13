@@ -5,7 +5,7 @@ description: "Müşterilere ait şüphe/sicil olay kayıtları — risk seviyesi
 
 Sicil olayları, müşteriler hakkında kaydedilen risk değerlendirme kayıtlarıdır (şüphe durumları). Kayıt seviyeleri müşterinin `recordLevel` alanıyla aynı ölçeği kullanır.
 
-## `GET /v1/compliance/customer-events` — olay listesi
+## `GET /v1/customers/events` — olay listesi
 
 Varsayılan sıralama **en yeni olay önce** (`eventDate:desc`).
 
@@ -29,6 +29,6 @@ Varsayılan sıralama **en yeni olay önce** (`eventDate:desc`).
 | `recordLevel` | Risk seviyesi (0-4) |
 | `comment` | Olay açıklaması |
 
-## `GET /v1/compliance/customer-events/{id}` — olay detayı
+## `GET /v1/customers/events/{id}` — olay detayı
 
 Tek olay kaydını aynı alanlarla döner.

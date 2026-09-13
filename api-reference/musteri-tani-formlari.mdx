@@ -3,9 +3,50 @@ title: "Müşteri tanı formları"
 description: "KYC / müşteri tanı formu kayıtları — onay, imza ve MASAK durumuyla"
 ---
 
-Müşteri tanı formları (Accord doğrulama kayıtları), müşterinin kimlik ve KYC bilgilerinin toplandığı resmi kayıtlardır. API'den [müşteri oluşturma](/api-reference/musteriler) ucuyla yaratılan kayıtlar da bu kaynağa düşer ve buradan izlenir.
+Müşteri tanı formları (Accord doğrulama kayıtları), müşterinin kimlik ve KYC bilgilerinin toplandığı resmi kayıtlardır. Bireysel ve kurumsal (temsilci/ortak/gerçek faydalanıcı + kurumsal belgeler) akışlar desteklenir.
 
-## `GET /v1/compliance/verifications` — form listesi
+## `POST /v1/customers/verifications` — form oluşturma
+
+Müşteri tanı (KYC) formu açar; kayıt onay bekleyen doğar (`isApproval: false`) ve onay akışı panel tarafında tamamlanır. API üzerinden doğrudan onaylı müşteri yaratılamaz. Aynı `idNo` ile onay bekleyen form varsa `409 CONFLICT` döner (`details[0].existingId` mevcut formu gösterir).
+
+### İstek gövdesi
+
+```json
+{
+  "data": {
+    "idNo": "12345678901",
+    "nameSurname": "ÖRNEK KUYUMCULUK A.Ş.",
+    "idType": "company",
+    "idCardType": "idCard",
+    "customerRelation": {
+      "types": "representative",
+      "nameSurname": "Yetkili Adı",
+      "idNo": "98765432109"
+    },
+    "companyDocuments": {
+      "taxDoc": { "fileName": "vergi-levhasi.pdf", "mimeType": "application/pdf", "content": "JVBERi0x..." }
+    }
+  }
+}
+```
+
+Temel alan kuralları [hızlı cari ekleme](/api-reference/musteriler) ile aynıdır; ek olarak:
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `onlyInvoice` | boolean | Formu yalnız fatura kaydı olarak açar |
+| `customerRelation` | object | Yalnız `idType=company` — temsilci/ortak/gerçek faydalanıcı |
+| `companyDocuments` | object | Yalnız `idType=company` — `taxDoc`, `activeDoc`, `registryDoc`, `signDoc` |
+
+<Note>
+  Kurumsal belgeler Accord akışıyla aynı doğrulamadan geçer: PDF/JPEG/PNG, belge başına en fazla 2 MiB, dosya uzantısı ve içerik imzası MIME türüyle eşleşmeli. İçerik güvenli geçici depoya yazılır ve panel onayında kimlik servisine taşınır. Kimlik/pasaport görselleri için [Kimlik belgeleri](/api-reference/kimlik-belgeleri) ucu kullanılır.
+</Note>
+
+### Cevap — `201`
+
+Oluşan formun liste öğesi döner (`id`, `idNo`, `nameSurname`, `isApproval: false`, `masakStatus` vb.); durum takibi `GET /v1/customers/verifications/{id}` ile yapılır.
+
+## `GET /v1/customers/verifications` — form listesi
 
 ### Sorgu parametreleri
 
@@ -30,7 +71,7 @@ Sıralama whitelist'i: `createdAt`, `updatedAt`, `nameSurname`. Varsayılan `cre
 
 `id`, `idNo`, `idType`, `idCardType`, `nameSurname`, `phone`, `email`, `nationality`, `countries`, `states`, `cities`, `masakStatus`, `isApproval`, `isSigned`, `onlyInvoice`, `contractVersion`, `createdAt`, `updatedAt`
 
-## `GET /v1/compliance/verifications/{id}` — form detayı
+## `GET /v1/customers/verifications/{id}` — form detayı
 
 Liste alanlarına ek olarak:
 

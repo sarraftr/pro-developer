@@ -5,7 +5,7 @@ description: "Müşteri kimlik belge kayıtları — doğrulama durumu, kanal ve
 
 Kimlik belge kayıtları, müşterilere ait yüklenmiş belgelerin (kimlik ön/arka, imza, ikametgâh, vergi levhası vb.) doğrulama durumunu izler. Belge **içeriği** API'de dönmez; kayıt ve doğrulama durumu döner.
 
-## `GET /v1/compliance/identity-documents` — belge listesi
+## `GET /v1/customers/identity-documents` — belge listesi
 
 ### Sorgu parametreleri
 
@@ -38,7 +38,7 @@ Sıralama whitelist'i: `createdAt`, `updatedAt`, `validityDate`. Varsayılan `cr
 | `isApproval` | idNo doğrulaması yapıldı mı |
 | `isDisabled` | Belge geçersiz mi |
 
-## `GET /v1/compliance/identity-documents/{id}` — belge detayı
+## `GET /v1/customers/identity-documents/{id}` — belge detayı
 
 Liste alanlarına ek olarak `description` ve **`data`** (OCR / doğrulama çıkarım sonucu) döner.
 
@@ -46,7 +46,7 @@ Liste alanlarına ek olarak `description` ve **`data`** (OCR / doğrulama çıka
   Görsel referansları (`imageUrl`, `imageId` vb.) ve AI ham çıktıları hiçbir uçta dönmez. Belge içeriği indirme ucu bu sürümde yoktur.
 </Warning>
 
-## `POST /v1/compliance/identity-documents` — belge görseli yükleme
+## `POST /v1/customers/identity-documents` — belge görseli yükleme
 
 Müşteri tanı (accord) akışı için kimlik veya pasaport görseli yükler. Görsel, belge servisine güvenle taşınır ve belge kaydı oluşur.
 

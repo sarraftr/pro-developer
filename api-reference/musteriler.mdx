@@ -1,9 +1,9 @@
 ---
 title: "Müşteriler"
-description: "Cari hesap listesi, müşteri detayı ve müşteri tanı formatında yeni müşteri oluşturma"
+description: "Cari hesap listesi, müşteri detayı ve hızlı cari ekleme"
 ---
 
-Cari hesaplar (müşteriler) SarrafPro'nun temel kaydıdır. Bu kaynak okuma uçlarının yanında **müşteri tanı formatında oluşturma** ucu da sunar.
+Cari hesaplar (müşteriler) SarrafPro'nun temel kaydıdır. Bu kaynak okuma uçlarının yanında **hızlı cari ekleme** ucu da sunar. Müşteri tanı (KYC) süreci için [Müşteri tanı formları](/api-reference/musteri-tani-formlari) kaynağını kullanın.
 
 ## `GET /v1/customers` — müşteri listesi
 
@@ -41,9 +41,9 @@ Tek cari hesabın geniş kaydını döner. Liste alanlarına ek olarak:
   Kimlik numarası (`idNo`) fatura/eşleştirme gereksinimleri nedeniyle **tam ve maskesiz** döner. PII alanları yalnızca detay ucunda yer alır.
 </Note>
 
-## `POST /v1/customers` — müşteri tanı formatında oluşturma
+## `POST /v1/customers` — hızlı cari ekleme
 
-Yeni müşteri, **müşteri tanı (KYC) formu** olarak oluşturulur: kayıt onay bekleyen bir form olarak doğar (`isApproval: false`) ve onay akışı panel tarafında tamamlanır. API üzerinden doğrudan onaylı müşteri yaratılamaz.
+Doğrudan kullanılabilir cari kaydı oluşturur; kayıt `saveType: "api"` ile doğar ve entegrasyonunuz tarafından anında kullanılabilir. Müşteri tanı (KYC) formu açmak için [Müşteri tanı formları](/api-reference/musteri-tani-formlari) sayfasındaki `POST /v1/customers/verifications` ucunu kullanın.
 
 ### İstek gövdesi
 
@@ -70,32 +70,35 @@ Yeni müşteri, **müşteri tanı (KYC) formu** olarak oluşturulur: kayıt onay
 | `nameSurname` | string | **Zorunlu** |
 | `idType` | string | `person` (varsayılan) veya `company` |
 | `idCardType` | string | `idCard` (varsayılan), `passport`, `dlCard`, `other` |
-| `customerRelation` | object | Yalnız `idType=company` iken kabul edilir |
-| diğer KYC alanları | string | `birthplace`, `birthday`, `phone`, `phone2`, `email`, `iban`, `taxOffice`, `registryNo`, `activityName`, `naceCode`, `countriesCode`, `countries`, `statesCode`, `states`, `cities`, `address`, `motherName`, `fatherName`, `jobName` |
-| `isAbroad`, `onlyInvoice` | boolean | Opsiyonel |
+| `customerRelation` | object | Yalnız `idType=company` iken kabul edilir; temsilci/ortak kaydı da oluşur |
+| diğer cari alanlar | string | `birthplace`, `birthday`, `phone`, `phone2`, `email`, `iban`, `taxOffice`, `registryNo`, `activityName`, `naceCode`, `countriesCode`, `countries`, `statesCode`, `states`, `cities`, `address`, `motherName`, `fatherName`, `jobName` |
+| `isAbroad` | boolean | Opsiyonel |
 
 <Warning>
-  Salt okunur alanlar (`isApproval`, `isSigned`, `isDeleted`, `masakStatus`, `companiesId`, `userId`, `approval*` vb.) veya sözleşmede olmayan alanlar gönderilirse istek `400 VALIDATION_FAILED` ile reddedilir.
+  Salt okunur alanlar (`recordLevel`, `isVerify`, `isValid`, `isPhoto`, `saveType`, `sourceDeviceId`, `sourcePosId`, `docTypes`, `year`, `companiesId`, `userId` vb.) veya sözleşmede olmayan alanlar gönderilirse istek `400 VALIDATION_FAILED` ile reddedilir.
 </Warning>
 
 ### Cevap — `201`
 
-Oluşan formun liste öğesi döner; durum takibi `GET /v1/compliance/verifications/{id}` ile yapılır:
+Oluşan cari kaydın liste öğesi döner:
 
 ```json
 {
   "success": true,
   "data": {
-    "id": "6a9c7e2bf2fb39feccb3480b",
+    "id": "6a9d12c4bf2fb39feccb3411",
     "idNo": "12345678901",
-    "nameSurname": "ÖRNEK KUYUMCULUK A.Ş.",
     "idType": "company",
     "idCardType": "idCard",
-    "isApproval": false,
-    "isSigned": false,
-    "masakStatus": 0,
-    "createdAt": "2026-09-05T20:30:00.000Z",
-    "updatedAt": "2026-09-05T20:30:00.000Z"
+    "nameSurname": "ÖRNEK KUYUMCULUK A.Ş.",
+    "saveType": "api",
+    "recordLevel": 0,
+    "isVerify": false,
+    "isValid": false,
+    "isPhoto": false,
+    "createdDate": "2026-09-13T16:00:00.000Z",
+    "lastDate": "2026-09-13T16:00:00.000Z",
+    "updatedAt": "2026-09-13T16:00:00.000Z"
   },
   "meta": { "requestId": "...", "timestamp": "..." }
 }
@@ -103,15 +106,15 @@ Oluşan formun liste öğesi döner; durum takibi `GET /v1/compliance/verificati
 
 ### Çift kayıt — `409 CONFLICT`
 
-Aynı `idNo` ile onay bekleyen (silinmemiş ve onaylanmamış) bir form zaten varsa istek reddedilir ve mevcut kaydın kimliği döner:
+Aynı `idNo` ile müşteri kaydı zaten varsa istek reddedilir ve mevcut kaydın kimliği döner:
 
 ```json
 {
   "success": false,
   "error": {
     "code": "CONFLICT",
-    "message": "Bu idNo icin onay bekleyen bir musteri tani formu zaten var.",
-    "details": [ { "field": "data.idNo", "rule": "duplicate", "existingId": "6a9c7e2bf2fb39feccb3480b" } ]
+    "message": "Bu idNo icin zaten bir musteri kaydi var.",
+    "details": [ { "field": "data.idNo", "rule": "duplicate", "existingId": "6a9d12c4bf2fb39feccb3411" } ]
   },
   "traceId": "..."
 }
