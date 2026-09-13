@@ -54,15 +54,15 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
 
 | Parametre | Tür | Açıklama |
 |---|---|---|
-| `filter[idNo]` | string | TCKN/VKN tam eşleşme |
-| `filter[idType]` | string | `person` veya `company` |
-| `filter[idCardType]` | string | `idCard`, `passport`, `dlCard`, `other` (legacy kapsamalı) |
-| `filter[isApproval]` | boolean | Form onay durumu |
-| `filter[isSigned]` | boolean | İmza durumu |
-| `filter[isDeleted]` | boolean | Verilmezse yalnız **silinmemiş** formlar döner |
-| `filter[masakStatus]` | integer | `0` sorgulanmadı, `1` sorun yok, `2` sorunlu |
-| `filter[startDate]` / `filter[endDate]` | date-time | `createdAt` aralığı |
-| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+| `idNo` | string | TCKN/VKN tam eşleşme |
+| `idType` | string | `person` veya `company` |
+| `idCardType` | string | `idCard`, `passport`, `dlCard`, `other` (legacy kapsamalı) |
+| `isApproval` | boolean | Form onay durumu |
+| `isSigned` | boolean | İmza durumu |
+| `isDeleted` | boolean | Verilmezse yalnız **silinmemiş** formlar döner |
+| `masakStatus` | integer | `0` sorgulanmadı, `1` sorun yok, `2` sorunlu |
+| `startDate` / `endDate` | date-time | `createdAt` aralığı |
+| `updatedSince` | date-time | Artımlı senkronizasyon |
 | `q` | string | Numerikse `idNo`, metinse ünvan araması |
 
 Sıralama whitelist'i: `createdAt`, `updatedAt`, `nameSurname`. Varsayılan `createdAt:asc`.

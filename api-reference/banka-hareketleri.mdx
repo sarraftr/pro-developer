@@ -13,14 +13,14 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
 
 | Parametre | Tür | Açıklama |
 |---|---|---|
-| `filter[incoming]` | boolean | `true`: yalnız gelen, `false`: yalnız giden hareketler |
-| `filter[status]` | integer | `0` bekleyen, `1` işlem yapıldı, `2` yok sayıldı |
-| `filter[masakStatus]` | integer | `0` sorgulanmadı, `1` sorun yok, `2` sorunlu — sorunlu işlemler için `2` kullanın |
-| `filter[idNo]` | string | Gönderici TCKN/VKN tam eşleşme |
-| `filter[currency]` | string | Para birimi (büyük harfe normalize edilir) |
-| `filter[bankCode]` | string | Banka kodu |
-| `filter[startDate]` / `filter[endDate]` | date-time | `transactionDate` aralığı (dönem çekimi için) |
-| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+| `incoming` | boolean | `true`: yalnız gelen, `false`: yalnız giden hareketler |
+| `status` | integer | `0` bekleyen, `1` işlem yapıldı, `2` yok sayıldı |
+| `masakStatus` | integer | `0` sorgulanmadı, `1` sorun yok, `2` sorunlu — sorunlu işlemler için `2` kullanın |
+| `idNo` | string | Gönderici TCKN/VKN tam eşleşme |
+| `currency` | string | Para birimi (büyük harfe normalize edilir) |
+| `bankCode` | string | Banka kodu |
+| `startDate` / `endDate` | date-time | `transactionDate` aralığı (dönem çekimi için) |
+| `updatedSince` | date-time | Artımlı senkronizasyon |
 
 Sıralama whitelist'i: `transactionDate`, `createdDate`, `updatedAt`, `amount`. Varsayılan `transactionDate:asc`.
 
@@ -66,7 +66,7 @@ Hareketin göndericisine (`idNo`) ait **en son** MASAK/WANTED/PEP sorgu kaydı d
 | `masak.data` | Yaptırım listesi eşleşme içeriği (varsa) |
 
 <Note>
-  Ayrı bir "masak durumu" ucu yoktur; liste ucunda `filter[masakStatus]=2` ile sorunlu hareketleri çekebilir, detayda tam sorgu özetini okuyabilirsiniz. Tam sorgu geçmişi için [Yaptırım sorguları](/api-reference/yaptirim-sorgulari) kaynağına bakın.
+  Ayrı bir "masak durumu" ucu yoktur; liste ucunda `masakStatus=2` ile sorunlu hareketleri çekebilir, detayda tam sorgu özetini okuyabilirsiniz. Tam sorgu geçmişi için [Yaptırım sorguları](/api-reference/yaptirim-sorgulari) kaynağına bakın.
 </Note>
 
 <Warning>

@@ -13,13 +13,13 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
 
 | Parametre | Tür | Açıklama |
 |---|---|---|
-| `filter[idNo]` | string | Müşteri TCKN/VKN tam eşleşme |
-| `filter[invoiceNumber]` | string | Fatura numarası tam eşleşme |
-| `filter[type]` | string | Fatura türü |
-| `filter[integrator]` | string | Entegratör (Nilvera, GIB vb.) |
-| `filter[module]` | string | Faturanın üretildiği modül |
-| `filter[startDate]` / `filter[endDate]` | date-time | `transactionDate` (fatura/resmileştirme tarihi) aralığı |
-| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+| `idNo` | string | Müşteri TCKN/VKN tam eşleşme |
+| `invoiceNumber` | string | Fatura numarası tam eşleşme |
+| `type` | string | Fatura türü |
+| `integrator` | string | Entegratör (Nilvera, GIB vb.) |
+| `module` | string | Faturanın üretildiği modül |
+| `startDate` / `endDate` | date-time | `transactionDate` (fatura/resmileştirme tarihi) aralığı |
+| `updatedSince` | date-time | Artımlı senkronizasyon |
 
 Sıralama whitelist'i: `transactionDate`, `createdAt`, `updatedAt`, `payableTotal`. Varsayılan `transactionDate:asc`.
 

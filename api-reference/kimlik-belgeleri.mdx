@@ -13,14 +13,14 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
 
 | Parametre | Tür | Açıklama |
 |---|---|---|
-| `filter[idNo]` | string | Belge sahibi TCKN/VKN |
-| `filter[type]` | string | `front`, `rear`, `accord`, `signature`, `addressDoc`, `activeDoc`, `registryDoc`, `taxDoc`, `signDoc` |
-| `filter[channel]` | string | Yükleme kanalı: `manual`, `whatsapp`, `idv`, `accord` |
-| `filter[idCheck]` | boolean | NVİ kimlik doğrulaması geçti mi |
-| `filter[isApproval]` | boolean | idNo doğrulaması yapıldı mı |
-| `filter[isDisabled]` | boolean | Verilmezse yalnız **geçerli** belgeler döner |
-| `filter[startDate]` / `filter[endDate]` | date-time | `createdAt` aralığı |
-| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+| `idNo` | string | Belge sahibi TCKN/VKN |
+| `type` | string | `front`, `rear`, `accord`, `signature`, `addressDoc`, `activeDoc`, `registryDoc`, `taxDoc`, `signDoc` |
+| `channel` | string | Yükleme kanalı: `manual`, `whatsapp`, `idv`, `accord` |
+| `idCheck` | boolean | NVİ kimlik doğrulaması geçti mi |
+| `isApproval` | boolean | idNo doğrulaması yapıldı mı |
+| `isDisabled` | boolean | Verilmezse yalnız **geçerli** belgeler döner |
+| `startDate` / `endDate` | date-time | `createdAt` aralığı |
+| `updatedSince` | date-time | Artımlı senkronizasyon |
 
 Sıralama whitelist'i: `createdAt`, `updatedAt`, `validityDate`. Varsayılan `createdAt:asc`.
 

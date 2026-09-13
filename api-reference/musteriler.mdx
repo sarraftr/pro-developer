@@ -15,15 +15,15 @@ Ortak parametreler (`page`, `pageSize`, `sort`, `q`) için [Genel Bakış](/api-
 
 | Parametre | Tür | Açıklama |
 |---|---|---|
-| `filter[idType]` | string | `person` veya `company` |
-| `filter[idCardType]` | string | `idCard`, `passport`, `dlCard`, `other`. `idCard` seçimi; belge türü alanı eksik/null/boş olan eski kayıtları da kapsar. |
-| `filter[recordLevel]` | integer | `0` kayıt yok, `1` normal, `2` güvenli, `3` riskli, `4` yasaklı. `0` seçimi alanı olmayan kayıtları da kapsar. |
-| `filter[isVerify]` | boolean | Müşteri tanı (doğrulama) durumu |
-| `filter[isValid]` | boolean | Kimlik doğrulama (NVİ) durumu |
-| `filter[isPhoto]` | boolean | Belge görseli varlığı |
-| `filter[saveType]` | string | Kayıt kaynağı: `bank`, `manual`, `idCard`, `accord` |
-| `filter[label]` | string | Tekil etiket |
-| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+| `idType` | string | `person` veya `company` |
+| `idCardType` | string | `idCard`, `passport`, `dlCard`, `other`. `idCard` seçimi; belge türü alanı eksik/null/boş olan eski kayıtları da kapsar. |
+| `recordLevel` | integer | `0` kayıt yok, `1` normal, `2` güvenli, `3` riskli, `4` yasaklı. `0` seçimi alanı olmayan kayıtları da kapsar. |
+| `isVerify` | boolean | Müşteri tanı (doğrulama) durumu |
+| `isValid` | boolean | Kimlik doğrulama (NVİ) durumu |
+| `isPhoto` | boolean | Belge görseli varlığı |
+| `saveType` | string | Kayıt kaynağı: `bank`, `manual`, `idCard`, `accord` |
+| `label` | string | Tekil etiket |
+| `updatedSince` | date-time | Artımlı senkronizasyon |
 
 Sıralama whitelist'i: `createdDate`, `lastDate`, `updatedAt`, `nameSurname`. Varsayılan `createdDate:asc`.
 

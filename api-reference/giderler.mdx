@@ -13,14 +13,14 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
 
 | Parametre | Tür | Açıklama |
 |---|---|---|
-| `filter[idNo]` | string | Müşteri TCKN/VKN tam eşleşme |
-| `filter[serial]` / `filter[number]` | string | Belge seri / numarası |
-| `filter[bankCode]` | string | Banka kodu |
-| `filter[isCheck]` | boolean | Mahsup/pusula durumu |
-| `filter[isExcel]` | boolean | Excel ile yüklenenler |
-| `filter[formalized]` | boolean | `true`: yalnız resmileşmiş (`printStamp` olan) kayıtlar |
-| `filter[startDate]` / `filter[endDate]` | date-time | `transactionDate` aralığı |
-| `filter[updatedSince]` | date-time | Artımlı senkronizasyon |
+| `idNo` | string | Müşteri TCKN/VKN tam eşleşme |
+| `serial` / `number` | string | Belge seri / numarası |
+| `bankCode` | string | Banka kodu |
+| `isCheck` | boolean | Mahsup/pusula durumu |
+| `isExcel` | boolean | Excel ile yüklenenler |
+| `formalized` | boolean | `true`: yalnız resmileşmiş (`printStamp` olan) kayıtlar |
+| `startDate` / `endDate` | date-time | `transactionDate` aralığı |
+| `updatedSince` | date-time | Artımlı senkronizasyon |
 | `q` | string | Numerikse `idNo`, metinse ünvan araması |
 
 Sıralama whitelist'i: `transactionDate`, `createdAt`, `updatedAt`, `amount`. Varsayılan `transactionDate:asc`.

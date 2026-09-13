@@ -13,16 +13,17 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
 
 | Parametre | Tür | Açıklama |
 |---|---|---|
-| `filter[archived]` | boolean | Verilmezse yalnız arşivsiz hesaplar döner |
-| `filter[currency]` | string | Para birimi (büyük harfe normalize edilir) |
-| `filter[bankCode]` | string | Banka kodu |
-| `filter[isApi]` | boolean | `true`: yalnız banka entegrasyonu bağlı hesaplar |
+| `archived` | boolean | Verilmezse yalnız arşivsiz hesaplar döner |
+| `currency` | string | Para birimi (büyük harfe normalize edilir) |
+| `bankCode` | string | Banka kodu |
+| `isApi` | boolean | `true`: yalnız banka entegrasyonu bağlı hesaplar |
 | `q` | string | Hesap adında arama |
+| `updatedSince` | date-time | Yalnız bu tarihte/sonra güncellenen hesaplar (`updatedAt >=`) |
 
-Sıralama whitelist'i: `createdDate`, `name`, `balance`. Varsayılan `createdDate:asc`.
+Sıralama whitelist'i: `createdDate`, `name`, `balance`, `updatedAt`. Varsayılan `createdDate:asc`.
 
 <Note>
-  Bu modelde `updatedAt` alanı olmadığından `filter[updatedSince]` desteklenmez (`400` döner). Bakiyenin tazeliğini `lastCheckAt` alanıyla takip edin.
+  `updatedAt` bakiye/banka senkronu güncellemelerinde de ilerler; incremental senkronizasyonda `updatedSince` + `sort=updatedAt:asc` kullanın. Bakiyenin son sorgu zamanını ayrıca `lastCheckAt` alanı verir.
 </Note>
 
 ### Cevap alanları (liste öğesi)
@@ -42,6 +43,7 @@ Sıralama whitelist'i: `createdDate`, `name`, `balance`. Varsayılan `createdDat
 | `lastTransactionAt` | Son çekilen hareketin zamanı |
 | `lastCheckStatus` / `lastCheckMessage` | Son sorgunun başarı durumu ve banka cevabı |
 | `lastCheckSize` | Son sorguda çekilen hareket sayısı |
+| `updatedAt` | Son güncelleme zamanı (bakiye/senkron güncellemesi de ilerletir) |
 
 ## `GET /v1/bank-accounts/{id}` — hesap detayı
 

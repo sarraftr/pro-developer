@@ -94,10 +94,10 @@ Authorization: Basic base64(apiUserId:secretKey)
 
 ### Filtreleme
 
-Filtreler `filter[alan]=değer` biçiminde yazılır ve her kaynağın sözleşmesinde açıkça listelenir:
+Filtreler `alan=değer` biçiminde yazılır ve her kaynağın sözleşmesinde açıkça listelenir:
 
 ```bash
-curl 'https://api.sarraf.pro/v1/bank-transactions?filter[incoming]=true&filter[masakStatus]=2'
+curl 'https://api.sarraf.pro/v1/bank-transactions?incoming=true&masakStatus=2'
 ```
 
 <Note>
@@ -110,10 +110,10 @@ curl 'https://api.sarraf.pro/v1/bank-transactions?filter[incoming]=true&filter[m
 
 ### Artımlı senkronizasyon (incremental sync)
 
-Çoğu kaynakta `filter[updatedSince]` desteklenir: yalnızca verilen ISO-8601 tarihinden sonra güncellenen kayıtlar döner. Muhasebe ve e-ticaret entegrasyonlarında önerilen desen:
+Tüm liste kaynaklarında `updatedSince` desteklenir: yalnızca verilen ISO-8601 tarihinden sonra güncellenen kayıtlar döner. Muhasebe ve e-ticaret entegrasyonlarında önerilen desen:
 
 ```bash
-curl 'https://api.sarraf.pro/v1/customers?filter[updatedSince]=2026-09-01T00:00:00.000Z&sort=updatedAt:asc&pageSize=100'
+curl 'https://api.sarraf.pro/v1/customers?updatedSince=2026-09-01T00:00:00.000Z&sort=updatedAt:asc&pageSize=100'
 ```
 
 <Note>
