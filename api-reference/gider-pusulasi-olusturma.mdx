@@ -1,0 +1,195 @@
+---
+title: "Gider pusulası oluşturma"
+description: "Banka hareketinden veya serbest olarak gider pusulası oluşturun ve kesinleştirin"
+---
+
+Gider pusulası oluşturma uçları, faturadakiyle aynı deseni izler: kalem seçilen şablona göre hesaplanır, pusula oluşturulur ve kesinleştirilir. Oluşan kayıt [Giderler](/api-reference/giderler) uçlarında görünür.
+
+İki kaynak desteklenir:
+
+| Kaynak | Ne zaman kullanılır |
+|---|---|
+| `bankTransaction` | Resmileştirilmemiş bir **giden** banka hareketi için pusula kesilir. Hareket resmileştirilmiş olarak işaretlenir. |
+| `manual` | Banka hareketine bağlı olmayan **serbest** gider pusulası. |
+
+<Warning>
+  Varsayılan davranış pusulayı **kesinleştirmektir**: seri-sıra numarası tüketilir, yazdırma tarihi yazılır ve stok hareketi oluşur. Kesinleştirilmiş pusula API'den iptal edilemez. Denemelerinizi önce `POST /v1/expenses/preview` (yan etkisiz) ve `isDraft: true` ile yapın.
+</Warning>
+
+## `GET /v1/expenses/templates` — kalem şablonları
+
+Gider pusulasında kullanılabilecek şablonları listeler. Dönen `key` değeri, `templateKey` alanında kullanılır.
+
+### Sorgu parametreleri
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `material` | string | `gold`, `silver`, `platin`, `paladyum`, `usd`, `eur`, `try` |
+| `type` | string | `reason`, `exceptional`, `normal`, `auto` |
+| `statusType` | string | `all`, `expense`. Verilmezse gider pusulasında kullanılabilen şablonlar döner |
+
+### Cevap alanları
+
+| Alan | Anlam |
+|---|---|
+| `key` | Şablon anahtarı — `templateKey` olarak kullanılır |
+| `title` / `lineName` | Şablon adı ve mahiyet verilmezse kullanılacak kalem adı |
+| `material` / `unitType` | Mal türü ve birim (`GRM`, `C62`) |
+| `isDefault` | Firmanızın gider pusulası varsayılan şablonu mu |
+| `exchange` | Mal türü için güncel liste fiyatı |
+
+## `POST /v1/expenses/preview` — ön hesaplama
+
+Miktar, birim fiyat, mahiyet ve müşteri bilgisini hesaplar. **Kayıt oluşmaz, seri-sıra numarası tüketilmez.** Gövde `POST /v1/expenses` ile aynıdır; `isDraft` ve `allowDuplicate` kullanılamaz.
+
+```json
+{
+  "data": {
+    "source": "manual",
+    "amount": 50000,
+    "idNo": "1976926558",
+    "nameSurname": "ÖRNEK SATICI"
+  }
+}
+```
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "source": "manual",
+    "sourceId": null,
+    "amount": 50000,
+    "exchanges": 6848.41,
+    "serial": "C",
+    "expectedNumber": 160998,
+    "attribute": "GRAM SAF ALTIN",
+    "quantity": 7.5,
+    "price": 6666.67,
+    "unitName": "GRM",
+    "template": { "key": "68cbdb89113005ecca208627", "title": "GRAM ALTIN", "lineName": "GRAM SAF ALTIN", "material": "gold" },
+    "customer": { "taxNumber": "1976926558", "name": "ÖRNEK SATICI", "city": "İSTANBUL" }
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+`expectedNumber` beklenen sıra numarasıdır; ön hesaplamada numara tüketilmez, kesin numara oluşturma cevabında döner.
+
+## `POST /v1/expenses` — gider pusulası oluşturma
+
+### İstek gövdesi — banka hareketinden
+
+```json
+{
+  "data": {
+    "source": "bankTransaction",
+    "bankTransactionId": "6aae791c1ae24632118287e3",
+    "idNo": "1976926558",
+    "nameSurname": "ÖRNEK SATICI"
+  }
+}
+```
+
+### İstek gövdesi — serbest pusula
+
+```json
+{
+  "data": {
+    "source": "manual",
+    "amount": 50000,
+    "idNo": "1976926558",
+    "nameSurname": "ÖRNEK SATICI",
+    "attribute": "GRAM SAF ALTIN",
+    "transactionDate": "2026-09-20T10:00:00.000Z",
+    "isDraft": true
+  }
+}
+```
+
+### Alanlar
+
+| Alan | Kaynak | Kural |
+|---|---|---|
+| `source` | her ikisi | **Zorunlu** — `bankTransaction` veya `manual` |
+| `idNo` | her ikisi | **Zorunlu** — satıcı TCKN/VKN |
+| `bankTransactionId` | banka | **Zorunlu** — resmileştirilmemiş **giden** hareket |
+| `amount` | serbest | **Zorunlu** — pusula tutarı (banka kaynağında hareketin tutarı kullanılır) |
+| `nameSurname`, `customerInfo` | her ikisi | Satıcı bilgisi; `customerInfo` cari kaydından geleni geçersiz kılar |
+| `templateKey` | her ikisi | Verilmezse firmanın gider pusulası varsayılan şablonu |
+| `exchanges` | her ikisi | Has/kur; verilmezse güncel fiyat listesinden |
+| `attribute` | her ikisi | Mahiyet; verilmezse şablonun kalem adı |
+| `description`, `currentCode` | her ikisi | Açıklama ve muhasebe cari kodu |
+| `transactionDate` | her ikisi | Pusula tarihi |
+| `serial`, `number` | serbest | Verilmezse firma ayarından üretilir |
+| `bankName`, `invoiceNo`, `isSwap` | serbest | Ödeme bankası, takas fatura numaraları, takas bilgisi |
+| `isDraft` | her ikisi | `true` ise pusula **kesinleştirilmez**; taslak kayıt olarak kalır |
+| `allowDuplicate` | her ikisi | `true` ise mükerrer kaydı kontrolü atlanır |
+
+Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir.
+
+### Cevap — `201`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6ab2f0c21ae2463211cf4321",
+    "source": "manual",
+    "sourceId": null,
+    "isDraft": false,
+    "isFinalized": true,
+    "printDate": "2026-09-20T10:00:05.000Z",
+    "serial": "C",
+    "number": "160998",
+    "amount": 50000,
+    "quantity": 7.5,
+    "price": 6666.67,
+    "unitName": "GRM",
+    "attribute": "GRAM SAF ALTIN",
+    "template": { "key": "...", "title": "GRAM ALTIN" },
+    "customer": { "taxNumber": "1976926558", "name": "ÖRNEK SATICI" }
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+`isFinalized: true` ise pusula kesinleştirilmiştir: sıra numarası verilmiş, yazdırma tarihi yazılmış ve stok hareketi oluşmuştur. `isDraft: true` ile oluşturulan kayıtta `isFinalized: false` ve `printDate: null` döner.
+
+### Hatalar
+
+| Hata | HTTP | Açıklama |
+|---|---|---|
+| Zorunlu alan eksik, bilinmeyen alan, kaynağa uymayan alan | 400 | `VALIDATION_FAILED` |
+| Banka hareketi veya şablon bulunamadı | 404 | `RESOURCE_NOT_FOUND` |
+| Banka hareketi resmileştirilmiş | 409 | `CONFLICT` |
+| Aynı gün, aynı kimlik ve aynı tutar ile pusula oluşturulmuş | 409 | `CONFLICT` — `details[0].existingId`; bilinçli tekrar için `allowDuplicate: true` |
+| Gider pusulası ayarı eksik/pasif, TCKN/VKN doğrulanamadı, alıcı e-fatura mükellefi, kalem hesaplanamadı | 422 | `VALIDATION_FAILED` |
+
+<Note>
+  Firmanızın ayarına göre TCKN/VKN doğrulaması zorunlu olabilir; ayrıca e-fatura mükellefi olan alıcılar için gider pusulası kesilmesi engellenebilir. Bu kurallar panel ile aynıdır.
+</Note>
+
+## `DELETE /v1/expenses/{id}` — taslak pusulanın iptali
+
+Kesinleştirilmemiş gider pusulasını siler. **Kesinleştirilmiş pusula bu uçtan silinemez** ve `409` döner; kesinleştirilmiş kayıtların iptali panelden yürütülür.
+
+Silme sırasında pusulaya bağlı giden banka hareketi yeniden işlenebilir duruma döner.
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": { "id": "6ab2f0c21ae2463211cf4321", "deleted": true },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+| Hata | HTTP | Açıklama |
+|---|---|---|
+| `id` geçersiz | 400 | `VALIDATION_FAILED` |
+| Kayıt bulunamadı | 404 | `RESOURCE_NOT_FOUND` |
+| Kesinleştirilmiş pusula | 409 | `CONFLICT` |

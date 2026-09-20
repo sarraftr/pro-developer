@@ -56,7 +56,8 @@
           {
             "group": "Giderler",
             "pages": [
-              "api-reference/giderler"
+              "api-reference/giderler",
+              "api-reference/gider-pusulasi-olusturma"
             ]
           }
         ]
