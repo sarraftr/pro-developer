@@ -9,6 +9,15 @@ Müşteri tanı formları (Accord doğrulama kayıtları), müşterinin kimlik v
 
 Müşteri tanı (KYC) formu açar; kayıt onay bekleyen doğar (`isApproval: false`) ve onay akışı panel tarafında tamamlanır. API üzerinden doğrudan onaylı müşteri yaratılamaz. Aynı `idNo` ile onay bekleyen form varsa `409 CONFLICT` döner (`details[0].existingId` mevcut formu gösterir).
 
+### Örnek istek
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/customers/verifications' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/json' \
+  -d '{"data": {"idNo": "1976926558", "nameSurname": "ÖRNEK MÜŞTERİ", "phone": "5001234567"}}'
+```
+
 ### İstek gövdesi
 
 ```json
@@ -48,6 +57,13 @@ Oluşan formun liste öğesi döner (`id`, `idNo`, `nameSurname`, `isApproval: f
 
 ## `GET /v1/customers/verifications` — form listesi
 
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/verifications?isApproval=false&pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
+
 ### Sorgu parametreleri
 
 Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
@@ -71,6 +87,38 @@ Sıralama whitelist'i: `createdAt`, `updatedAt`, `nameSurname`. Varsayılan `cre
 
 `id`, `idNo`, `idType`, `idCardType`, `nameSurname`, `phone`, `email`, `nationality`, `countries`, `states`, `cities`, `masakStatus`, `isApproval`, `isSigned`, `onlyInvoice`, `contractVersion`, `createdAt`, `updatedAt`
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6aa1c2f0da99cd3fa911edc7",
+      "idNo": "1976926558",
+      "idType": "tckn",
+      "nameSurname": "ÖRNEK MÜŞTERİ",
+      "phone": "5001234567",
+      "masakStatus": 0,
+      "isApproval": false,
+      "isSigned": false,
+      "onlyInvoice": false,
+      "contractVersion": "2026-01",
+      "createdAt": "2026-09-14T11:00:00.000Z",
+      "updatedAt": "2026-09-14T11:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
 ## `GET /v1/customers/verifications/{id}` — form detayı
 
 Liste alanlarına ek olarak:
@@ -86,3 +134,36 @@ Liste alanlarına ek olarak:
 <Warning>
   Form görselleri ve belge içerikleri (`frontImage`, `signatureImage`, `addressDoc` vb.), SMS kodları ve onay kilidi gibi iç alanlar hiçbir uçta dönmez.
 </Warning>
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/verifications/6aa1c2f0da99cd3fa911edc7' \
+  -u 'apiUserId:secretKey'
+```
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6aa1c2f0da99cd3fa911edc7",
+    "idNo": "1976926558",
+    "nameSurname": "ÖRNEK MÜŞTERİ",
+    "isApproval": false,
+    "isSigned": false,
+    "birthday": "1985-06-14",
+    "taxOffice": "BAHÇELİEVLER",
+    "address": "ÖRNEK MAH. ÖRNEK SOK. NO:1",
+    "motherName": "AYŞE",
+    "fatherName": "MEHMET",
+    "createdAt": "2026-09-14T11:00:00.000Z",
+    "updatedAt": "2026-09-14T11:00:00.000Z"
+  },
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z"
+  }
+}
+```

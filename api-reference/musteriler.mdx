@@ -9,6 +9,13 @@ Cari hesaplar (müşteriler) SarrafPro'nun temel kaydıdır. Bu kaynak okuma uç
 
 Şirkete ait cari hesapları sayfalı, filtreli ve sıralı listeler.
 
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers?q=1976926558&pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
+
 ### Sorgu parametreleri
 
 Ortak parametreler (`page`, `pageSize`, `sort`, `q`) için [Genel Bakış](/api-reference/genel-bakis) sayfasına bakın.
@@ -31,6 +38,42 @@ Sıralama whitelist'i: `createdDate`, `lastDate`, `updatedAt`, `nameSurname`. Va
 
 `id`, `idNo`, `idType`, `idCardType`, `nameSurname`, `phone`, `email`, `nationality`, `countries`, `states`, `cities`, `labels`, `recordLevel`, `isVerify`, `isValid`, `isPhoto`, `saveType`, `createdDate`, `lastDate`, `updatedAt`
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6a9c7e2bf2fb39feccb3480b",
+      "idNo": "1976926558",
+      "idType": "tckn",
+      "nameSurname": "ÖRNEK MÜŞTERİ",
+      "phone": "5001234567",
+      "email": "ornek@example.com",
+      "nationality": "TR",
+      "states": "İstanbul",
+      "cities": "Bahçelievler",
+      "recordLevel": "normal",
+      "isVerify": true,
+      "isValid": true,
+      "isPhoto": true,
+      "saveType": "panel",
+      "createdDate": "2026-04-11T08:20:00.000Z",
+      "updatedAt": "2026-09-18T14:05:00.000Z"
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
 ## `GET /v1/customers/{id}` — müşteri detayı
 
 Tek cari hesabın geniş kaydını döner. Liste alanlarına ek olarak:
@@ -40,6 +83,13 @@ Tek cari hesabın geniş kaydını döner. Liste alanlarına ek olarak:
 <Note>
   Kimlik numarası (`idNo`) fatura/eşleştirme gereksinimleri nedeniyle **tam ve maskesiz** döner. PII alanları yalnızca detay ucunda yer alır.
 </Note>
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/6a9c7e2bf2fb39feccb3480b' \
+  -u 'apiUserId:secretKey'
+```
 
 ### Gömülü uyum özeti
 
@@ -51,9 +101,77 @@ Detay cevabı, ek uç çağırmaya gerek bırakmayan üç uyum bölümü de içe
 | `masak` | idNo bazlı son MASAK sorgusu: `lastQueriedAt`, `types`, `isError` — hiç sorgu yoksa `null` |
 | `events` | Sicil özeti: `count` (toplam olay) ve `latest` (en yeni olay, yoksa `null`). Tam liste için [Müşteri sicil olayları](/api-reference/musteri-sicil-olaylari) |
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6a9c7e2bf2fb39feccb3480b",
+    "idNo": "1976926558",
+    "idType": "tckn",
+    "nameSurname": "ÖRNEK MÜŞTERİ",
+    "phone": "5001234567",
+    "email": "ornek@example.com",
+    "nationality": "TR",
+    "states": "İstanbul",
+    "cities": "Bahçelievler",
+    "recordLevel": "normal",
+    "isVerify": true,
+    "isValid": true,
+    "isPhoto": true,
+    "saveType": "panel",
+    "createdDate": "2026-04-11T08:20:00.000Z",
+    "updatedAt": "2026-09-18T14:05:00.000Z",
+    "name": "ÖRNEK",
+    "surname": "MÜŞTERİ",
+    "birthday": "1985-06-14",
+    "taxOffice": "BAHÇELİEVLER",
+    "address": "ÖRNEK MAH. ÖRNEK SOK. NO:1",
+    "verification": {
+      "latestId": "6aa1c2f0da99cd3fa911edc7",
+      "isApproval": true,
+      "isSigned": true,
+      "lastFormAt": "2026-08-02T10:12:00.000Z",
+      "hasPendingForm": false
+    },
+    "masak": {
+      "lastQueriedAt": "2026-09-01T07:40:00.000Z",
+      "types": [
+        "masak",
+        "wanted"
+      ],
+      "isError": false
+    },
+    "events": {
+      "count": 2,
+      "latest": {
+        "id": "6a90bb11da99cd3fa911aa02",
+        "eventDate": "2026-07-19T00:00:00.000Z",
+        "recordLevel": "normal",
+        "comment": "Sicil güncellemesi"
+      }
+    }
+  },
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z"
+  }
+}
+```
+
 ## `POST /v1/customers` — hızlı cari ekleme
 
 Doğrudan kullanılabilir cari kaydı oluşturur; kayıt `saveType: "api"` ile doğar ve entegrasyonunuz tarafından anında kullanılabilir. Müşteri tanı (KYC) formu açmak için [Müşteri tanı formları](/api-reference/musteri-tani-formlari) sayfasındaki `POST /v1/customers/verifications` ucunu kullanın.
+
+### Örnek istek
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/customers' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/json' \
+  -d '{"data": {"idNo": "1976926558", "nameSurname": "ÖRNEK MÜŞTERİ", "phone": "5001234567", "email": "ornek@example.com"}}'
+```
 
 ### İstek gövdesi
 

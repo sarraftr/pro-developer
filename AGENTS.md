@@ -1,33 +1,46 @@
-> **First-time setup**: Customize this file for your project. Prompt the user to customize this file for their project.
-> For Mintlify product knowledge (components, configuration, writing standards),
-> install the Mintlify skill: `npx skills add https://mintlify.com/docs`
+# SarrafPro Developer — dokümantasyon çalışma talimatları
 
-# Documentation project instructions
+Bu depo SarrafPro Dış API (v1) geliştirici dokümantasyonudur. Sayfalar MDX, yapılandırma `docs.json`, site motoru Mintlify'dır.
 
-## About this project
+## Dil ve üslup
 
-- This is a documentation site built on [Mintlify](https://mintlify.com)
-- Pages are MDX files with YAML frontmatter
-- Configuration lives in `docs.json`
-- Use the Mintlify MCP server, `https://mcp.mintlify.com`, to edit content and settings via MCP
-- Use the Mintlify docs MCP server, `https://www.mintlify.com/docs/mcp`, to query information about using Mintlify via MCP
+- Tüm içerik **Türkçe**dir. Kod, alan adları ve HTTP terimleri İngilizce kalır.
+- Üslup profesyonel, doğrudan ve ikinci tekil şahıstır ("gönderin", "alırsınız").
+- Cümleler kısadır, bir cümlede bir fikir vardır. Başlıklarda cümle düzeni kullanılır.
+- Dosya adları, alanlar, parametreler ve kod referansları `backtick` içinde yazılır.
 
-## Terminology
+## Sayfa iskeleti
 
-{/* Add product-specific terms and preferred usage */}
-{/* Example: Use "workspace" not "project", "member" not "user" */}
+Her uç sayfası aynı sırayı izler:
 
-## Style preferences
+1. Kaynağın ne işe yaradığı — bir paragraf
+2. Uç başlığı: `` `METHOD /v1/yol` — kısa açıklama ``
+3. `curl` istek örneği
+4. Parametre / gövde alanı tablosu
+5. Gerçekçi JSON cevap örneği
+6. Hata tablosu (HTTP + `error.code` + açıklama)
+7. Varsa uyarı/not bileşenleri
 
-{/* Add any project-specific style rules below */}
+Ortak kurallar (kimlik doğrulama, zarf, sayfalama, hata kodları) tekrar edilmez; [Genel Bakış](api-reference/genel-bakis.mdx) sayfasına bağlantı verilir.
 
-- Use active voice and second person ("you")
-- Keep sentences concise — one idea per sentence
-- Use sentence case for headings
-- Bold for UI elements: Click **Settings**
-- Code formatting for file names, commands, paths, and code references
+## Gizlilik sınırı — zorunlu
 
-## Content boundaries
+Dokümana ve OpenAPI dosyasına **asla** yazılmaz:
 
-{/* Define what should and shouldn't be documented */}
-{/* Example: Don't document internal admin features */}
+- İç alan adları, geliştirme ortamı adresleri, yerel host adları
+- IP adresleri, altyapı ve sunucu topolojisi bilgisi
+- Kimlik bilgileri, API anahtarları, örnek gerçek anahtarlar
+- Veritabanı koleksiyon adları, iç modül adları, iç kayıt damgaları
+
+Örneklerde yalnız canlı ortam adresi (`https://api.sarraf.pro`) ve temsilî değerler kullanılır.
+
+## OpenAPI dosyası
+
+`api-reference/openapi.json` bu depoda **elle düzenlenmez**. API deposundaki `project/sarraf/docs/api-v1.openapi.json` kaynaktır; değişiklik orada yapılır ve buraya kopyalanır. İki kopya birebir aynı olmalıdır.
+
+## Değişiklik disiplini
+
+- Sayfa adresleri (slug) korunur. Yeniden adlandırma gerekiyorsa `docs.json` içinde `redirects` tanımlanır.
+- API sözleşmesi değiştiğinde ilgili sayfa **aynı işte** güncellenir; doküman ile sözleşme arasında sapma bırakılmaz.
+- Yeni uç eklendiğinde: kaynak sayfası + `docs.json` gezinme + spec kopyası birlikte güncellenir.
+- Yayına alınmamış veya kapsam dışı bırakılmış uçlar dokümana yazılmaz.

@@ -1,47 +1,127 @@
 ---
-title: "Quickstart"
-description: "SarrafPro Dış API'ye ilk isteğinizi birkaç dakikada atın"
+title: "Hızlı başlangıç"
+description: "Anahtarınızı alın, ilk isteğinizi atın ve ilk belgenizi güvenle oluşturun"
 ---
 
-Describe how someone begins using your product. What is the first thing they need to do? Are there any prerequisites?
+Bu sayfa sizi sıfırdan ilk başarılı isteğe, ardından ilk belgeyi güvenle oluşturmaya götürür. Tüm örnekler doğrudan çalıştırılabilir; yalnız kimlik bilgilerini kendi değerlerinizle değiştirin.
 
-A quickstart should take someone from zero to using your product. They'll get a quick win and a sense of what they can accomplish.
+## Ön koşullar
 
-## Prerequisites
+- SarrafPro hesabınızın **Free dışında** bir pakette ve aktif olması
+- Panelden üretilmiş bir **API kullanıcısı**: `apiUserId` ve `secretKey`
+- HTTP isteği atabileceğiniz bir araç (`curl`, Postman, kendi uygulamanız)
 
-Before you begin, you must have:
+<Warning>
+  `secretKey` bir paroladır. Sunucu tarafında saklayın; tarayıcı, mobil uygulama veya herkese açık depo gibi istemci ortamlarına koymayın.
+</Warning>
 
-- Requirement one (for example, Node.js 18+, a free account, an API key)
-- Requirement two (for example, a compatible device, a compatible browser, a compatible operating system)
-
-## Get started
+## Adımlar
 
 <Steps>
-  <Step title="Install">
-    Describe how to install your product or sign up.
+  <Step title="Kimlik doğrulamayı kurun">
+    Tüm uçlar HTTP Basic kimlik doğrulaması kullanır: kullanıcı adı `apiUserId`, parola `secretKey`.
 
     ```bash
-    npm install your-package
+    curl 'https://api.sarraf.pro/v1/customers?pageSize=1' \
+      -u 'apiUserId:secretKey'
     ```
+
+    Başarılı cevap sabit zarf biçimindedir:
+
+    ```json
+    {
+      "success": true,
+      "data": [ { "id": "6a9c7e2bf2fb39feccb3480b", "idNo": "1976926558", "nameSurname": "ÖRNEK MÜŞTERİ" } ],
+      "meta": { "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866", "timestamp": "2026-09-20T09:00:00.000Z", "page": 1, "limit": 1, "total": 114, "pages": 114 }
+    }
+    ```
+
+    `401` alıyorsanız anahtarın aktif ve geçerlilik süresinin dolmamış olduğunu doğrulayın.
   </Step>
-  <Step title="Configure">
-    Describe any setup or configuration needed before first use.
+
+  <Step title="Listeleri sayfalayın ve filtreleyin">
+    Liste uçları `page` ve `pageSize` (en fazla 100) ile sayfalanır, `sort` ile sıralanır, kaynağa özel alanlarla filtrelenir.
 
     ```bash
-    your-cli init
+    curl 'https://api.sarraf.pro/v1/bank-transactions?incoming=true&pageSize=50&sort=transactionDate:desc' \
+      -u 'apiUserId:secretKey'
     ```
+
+    Bilinmeyen bir filtre `400` döner — sözleşme sessizce genişlemez. Tüm ortak kurallar [Genel Bakış](/api-reference/genel-bakis) sayfasındadır.
   </Step>
-  <Step title="Run it">
-    Show the first thing a user does to see it working.
+
+  <Step title="Değişenleri artımlı çekin">
+    Her seferinde tüm veriyi çekmek yerine son senkron zamanınızdan sonrasını isteyin:
 
     ```bash
-    your-cli start
+    curl 'https://api.sarraf.pro/v1/customers?updatedSince=2026-09-01T00:00:00.000Z&sort=updatedAt:asc&pageSize=100' \
+      -u 'apiUserId:secretKey'
     ```
+
+    Son sayfadaki `updatedAt` değerini saklayın ve bir sonraki turda `updatedSince` olarak gönderin.
+  </Step>
+
+  <Step title="Belge oluşturmadan önce hesaplatın">
+    Fatura ve gider pusulası uçlarında **yan etkisiz** ön hesaplama vardır: kalemleri, tutarları ve belge türünü gösterir, hiçbir kayıt oluşturmaz.
+
+    ```bash
+    curl -X POST 'https://api.sarraf.pro/v1/invoices/preview' \
+      -u 'apiUserId:secretKey' \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "data": {
+          "source": "manual",
+          "amount": 100000,
+          "idNo": "11111111111",
+          "nameSurname": "NİHAİ TÜKETİCİ",
+          "paymentType": "bank"
+        }
+      }'
+    ```
+
+    Dönen `totals` ve `lines` değerlerini doğrulayın.
+  </Step>
+
+  <Step title="Önce taslak, sonra gerçek belge">
+    Aynı gövdeyi `isDraft: true` ile `POST /v1/invoices` ucuna gönderdiğinizde resmî fatura kesilmez; yalnız taslak oluşur ve `DELETE /v1/invoices/{id}` ile iptal edilebilir.
+
+    ```bash
+    curl -X POST 'https://api.sarraf.pro/v1/invoices' \
+      -u 'apiUserId:secretKey' \
+      -H 'Content-Type: application/json' \
+      -d '{ "data": { "source": "manual", "amount": 100000, "idNo": "11111111111", "paymentType": "bank", "isDraft": true } }'
+    ```
+
+    Sonuçtan memnunsanız `isDraft` alanını kaldırarak gerçek belgeyi oluşturun. Başarılı cevap `201` döner ve `invoiceId` ile belge [Faturalar](/api-reference/faturalar) ucundan okunabilir.
   </Step>
 </Steps>
 
-<Tip>
-  Give people a way to get help. This could be a link to a support page, a chat with a customer support agent, or a forum for your product.
+<Warning>
+  `isDraft` olmadan gönderilen istek **gerçek mali belge** üretir ve API'den geri alınamaz. Entegrasyonunuzu geliştirirken önce `preview`, sonra taslak akışını kullanın.
+</Warning>
 
-  Example: Need help? Reach out to us at [support@yourcompany.com](mailto:support@yourcompany.com).
-</Tip>
+## Yazma isteklerinde gövde zarfı
+
+Tüm `POST` uçlarında gövde `data` zarfı içinde gönderilir:
+
+```json
+{ "data": { "source": "manual", "amount": 100000 } }
+```
+
+Zarf eksikse veya bilinmeyen bir alan gönderilirse istek `400` ile reddedilir.
+
+## Sonraki adımlar
+
+<CardGroup cols={2}>
+  <Card title="Ortak sözleşme" icon="book-open" href="/api-reference/genel-bakis">
+    Hata kodları, sayfalama, filtreleme ve alan disiplini.
+  </Card>
+
+  <Card title="Fatura işlemleri" icon="file-invoice" href="/api-reference/fatura-olusturma">
+    Şablon seçimi, ön hesaplama, oluşturma ve taslak iptali.
+  </Card>
+</CardGroup>
+
+## Yardım
+
+Sorun yaşarsanız hata cevabındaki `traceId` değerini paylaşmanız yeterlidir; istek kaydı bu kimlikle bulunur. Destek: [destek@sarraf.pro](mailto:destek@sarraf.pro)

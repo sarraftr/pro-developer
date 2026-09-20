@@ -1,55 +1,51 @@
-# Mintlify Starter Kit
+# SarrafPro Developer
 
-Use the starter kit to get your docs deployed and ready to customize.
+[SarrafPro Dış API (v1)](https://api.sarraf.pro) geliştirici dokümantasyonunun kaynak deposu. Site [Mintlify](https://mintlify.com) ile yayınlanır.
 
-Click the green **Use this template** button at the top of this repo to copy the Mintlify starter kit. The starter kit contains examples with
+## Depo yapısı
 
-- Guide pages
-- Navigation
-- Customizations
-- API reference pages
-- Use of popular components
+| Yol | İçerik |
+|---|---|
+| `docs.json` | Site yapılandırması: gezinme, tema, API referansı sekmesi |
+| `index.mdx` | Giriş sayfası |
+| `quickstart.mdx` | Hızlı başlangıç |
+| `api-reference/genel-bakis.mdx` | Tüm uçlarda geçerli ortak sözleşme |
+| `api-reference/*.mdx` | Kaynak rehberleri (müşteriler, banka, faturalar, giderler) |
+| `api-reference/openapi.json` | Makine-okunur sözleşme (OpenAPI 3.0.3) |
 
-**[Follow the full quickstart guide](https://starter.mintlify.com/quickstart)**
+## OpenAPI dosyası
 
-## AI-assisted writing
-
-Set up your AI coding tool to work with Mintlify:
+`api-reference/openapi.json` **bu depoda elle düzenlenmez.** Kaynağı API deposundaki `project/sarraf/docs/api-v1.openapi.json` dosyasıdır; her API değişikliğinde oradan kopyalanır. İki kopyanın birebir aynı olması gerekir:
 
 ```bash
-npx skills add https://mintlify.com/docs
+diff -q ../api/project/sarraf/docs/api-v1.openapi.json api-reference/openapi.json
 ```
 
-This command installs Mintlify's documentation skill for your configured AI tools like Claude Code, Cursor, Windsurf, and others. The skill includes component reference, writing standards, and workflow guidance.
+## Yerel önizleme
 
-See the [AI tools guides](/ai-tools) for tool-specific setup.
-
-## Development
-
-Install the [Mintlify CLI](https://www.npmjs.com/package/mint) to preview your documentation changes locally. To install, use the following command:
-
-```
+```bash
 npm i -g mint
 ```
 
-Run the following command at the root of your documentation, where your `docs.json` is located:
-
-```
+```bash
 mint dev
 ```
 
-View your local preview at `http://localhost:3000`.
+Önizleme `http://localhost:3000` adresinde açılır.
 
-## Publishing changes
+## Yayın
 
-Install our GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app) to propagate changes from your repo to your deployment. Changes are deployed to production automatically after pushing to the default branch.
+`main` dalına yapılan her push, Mintlify GitHub uygulaması üzerinden canlıya taşınır. Değişiklikleri push etmeden önce yerel önizlemede kontrol edin.
 
-## Need help?
+## Yazım kuralları
 
-### Troubleshooting
+Sayfa iskeleti, üslup ve gizlilik kuralları [AGENTS.md](AGENTS.md) dosyasındadır. Özetle:
 
-- If your dev environment isn't running: Run `mint update` to ensure you have the most recent version of the CLI.
-- If a page loads as a 404: Make sure you are running in a folder with a valid `docs.json`.
+- Dil Türkçe, üslup profesyonel ve doğrudan.
+- Her uç aynı iskelete oturur: ne işe yarar → istek → parametreler → cevap → hatalar.
+- Dokümana **iç alan adları, IP adresleri, kimlik bilgileri ve geliştirme ortamı bilgileri yazılmaz**; yalnız canlı ortam bilgileri yer alır.
+- Sayfa adresleri (slug) korunur; yeniden adlandırma gerekiyorsa `docs.json` içinde yönlendirme tanımlanır.
 
-### Resources
-- [Mintlify documentation](https://mintlify.com/docs)
+---
+
+© SarrafPro. Tüm hakları saklıdır.

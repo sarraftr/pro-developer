@@ -19,6 +19,13 @@ Tüm uçlar HTTP Basic kimlik doğrulaması gerektirir. Kullanıcı adı `apiUse
 Authorization: Basic base64(apiUserId:secretKey)
 ```
 
+Çoğu istemci bunu sizin için üretir:
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers?pageSize=1' \
+  -u 'apiUserId:secretKey'
+```
+
 <Warning>
   Anahtar kaydı `status: true` ve **geçerlilik tarihi gelecekte** olmalıdır; aksi halde API `401` döner. Şirketiniz `Free` paketteyse veya pasifleştirildiyse de istek reddedilir.
 </Warning>
@@ -72,8 +79,10 @@ Authorization: Basic base64(apiUserId:secretKey)
 | 401 | `AUTH_INVALID_CREDENTIALS` | Authorization başlığı eksik/yanlış, anahtar pasif veya süresi dolmuş, şirket geçersiz. |
 | 403 | `AUTH_FORBIDDEN` | Anahtar geçerli ancak bu kaynağa yetkisi yok. |
 | 404 | `RESOURCE_NOT_FOUND` | Kayıt veya uç bulunamadı. |
-| 409 | `CONFLICT` | Çift kayıt — örn. aynı `idNo` ile onay bekleyen form varken yeni müşteri oluşturma. `details[0].existingId` mevcut kaydı gösterir. |
+| 409 | `CONFLICT` | Çakışma — çift kayıt, işlenmiş banka hareketi veya kesinleşmiş belgeyi değiştirme denemesi. `details[0]` mevcut kaydı gösterir. |
+| 422 | `VALIDATION_FAILED` | İstek biçimsel olarak doğru ama iş kuralı engelliyor — örn. TCKN/VKN doğrulanamadı, kalem hesaplanamadı, belge ayarları eksik. |
 | 500 | `INTERNAL_ERROR` | Beklenmeyen sunucu hatası. |
+| 502 | `UPSTREAM_ERROR` | Dış servis hatası (e-belge gönderimi, belge yükleme). `error.details` dış servisin hata listesini taşır. |
 
 <Tip>
   Destek taleplerinde `traceId` paylaşmanız yeterlidir; tüm istek/cevap kayıtları bu kimlikle eşleştirilir.
@@ -110,14 +119,15 @@ curl 'https://api.sarraf.pro/v1/bank-transactions?incoming=true&masakStatus=2'
 
 ### Artımlı senkronizasyon (incremental sync)
 
-Tüm liste kaynaklarında `updatedSince` desteklenir: yalnızca verilen ISO-8601 tarihinden sonra güncellenen kayıtlar döner. Muhasebe ve e-ticaret entegrasyonlarında önerilen desen:
+Müşteriler, uyum kayıtları, banka hesapları, banka hareketleri ve gider pusulası kaynaklarında `updatedSince` desteklenir: yalnızca verilen ISO-8601 tarihinden sonra güncellenen kayıtlar döner. Muhasebe ve e-ticaret entegrasyonlarında önerilen desen:
 
 ```bash
-curl 'https://api.sarraf.pro/v1/customers?updatedSince=2026-09-01T00:00:00.000Z&sort=updatedAt:asc&pageSize=100'
+curl 'https://api.sarraf.pro/v1/customers?updatedSince=2026-09-01T00:00:00.000Z&sort=updatedAt:asc&pageSize=100' \
+  -u 'apiUserId:secretKey'
 ```
 
 <Note>
-  `accounts` modeli gibi `updatedAt` taşımayan kaynaklarda `updatedSince` desteklenmez ve `400` döner; bu durum kaynak sayfasında belirtilir.
+  Her kaynağın desteklediği filtreler kendi sayfasında listelenir. Desteklenmeyen bir filtre `400 VALIDATION_FAILED` döner; sessizce yok sayılmaz.
 </Note>
 
 ## Yazma uçları: gövde zarfı ve durum kodları
@@ -132,10 +142,20 @@ Zarf eksikse veya `data` nesne değilse istek `400` ile reddedilir.
 
 | Durum | Ne zaman |
 |---|---|
-| `201` | Kaynak oluşturuldu (örn. müşteri tanı formu, yaptırım sorgu kaydı) |
-| `200` | Kaynak yaratmayan aksiyonlar (örn. banka sorgusu tetikleme) |
-| `400` | Doğrulama hatası — bilinmeyen/salt-okunur alanlar da bu kapsamda reddedilir |
-| `409` | Çift kayıt çakışması |
+| `201` | Kaynak oluşturuldu (örn. fatura, gider pusulası, müşteri tanı formu, yaptırım sorgu kaydı) |
+| `200` | Kaynak yaratmayan aksiyonlar (örn. banka sorgusu tetikleme, ön hesaplama, taslak iptali) |
+| `400` | Doğrulama hatası — bilinmeyen ve salt-okunur alanlar da bu kapsamda reddedilir |
+| `409` | Çakışma — mükerrer kayıt veya işlenmiş kaynak |
+| `422` | İş kuralı engeli |
+| `502` | Dış servis hatası |
+
+### Silme uçları
+
+Belge iptalleri `DELETE` ile yapılır ve **yalnız kesinleşmemiş belgeyi** kapsar: gönderilmemiş fatura taslağı, kesinleştirilmemiş gider pusulası. Kesinleşmiş belge `409` döner ve iptali panelden yürütülür.
+
+### Mükerrer koruma
+
+Finansal belge oluşturan uçlar mükerrer isteğe karşı korumalıdır. Ağ hatası nedeniyle cevabı alamadığınız bir istekte tekrar denemeden önce ilgili liste ucundan belgenin oluşup oluşmadığını doğrulayın; ikinci istek çakışma durumunda `409` ile reddedilir ve `details[0]` mevcut kaydı gösterir.
 
 ## Alan disiplini
 
@@ -143,6 +163,12 @@ Zarf eksikse veya `data` nesne değilse istek `400` ile reddedilir.
 - Şirket içi alanlar (`companiesId`, `userId` vb.) ve entegrasyon sırları (örn. banka `integrationsData`) hiçbir uçta dönmez.
 - Tarihler ISO-8601 metnidir.
 
-## OpenAPI tanımı
+## OpenAPI tanımı ve canlı deneme
 
-Uçların makine-okunur sözleşmesi OpenAPI 3.0.3 dosyası olarak yayınlanır ve her yeni kaynakla güncellenir. Postman/Insomnia import veya kod üretimi (client SDK, mock) için kullanılabilir.
+Uçların makine-okunur sözleşmesi OpenAPI 3.0.3 dosyası olarak yayınlanır ve her yeni kaynakla güncellenir. Postman/Insomnia içe aktarımı veya kod üretimi (client SDK, mock) için kullanabilirsiniz; sayfanın sağ üstündeki menüden indirebilirsiniz.
+
+**API Referansı** sekmesinde okuma uçlarını kendi anahtarınızla tarayıcıdan deneyebilirsiniz.
+
+<Warning>
+  Belge oluşturan uçlar (fatura, gider pusulası) canlı denemeye açılmaz: bu uçlar **gerçek mali belge** üretir. Bu uçları kendi ortamınızdan, önce `preview` ve taslak modunda deneyin.
+</Warning>

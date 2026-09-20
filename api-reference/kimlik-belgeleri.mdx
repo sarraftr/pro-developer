@@ -7,6 +7,13 @@ Kimlik belge kayıtları, müşterilere ait yüklenmiş belgelerin (kimlik ön/a
 
 ## `GET /v1/customers/identity-documents` — belge listesi
 
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/identity-documents?idNo=1976926558&pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
+
 ### Sorgu parametreleri
 
 Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
@@ -38,6 +45,37 @@ Sıralama whitelist'i: `createdAt`, `updatedAt`, `validityDate`. Varsayılan `cr
 | `isApproval` | idNo doğrulaması yapıldı mı |
 | `isDisabled` | Belge geçersiz mi |
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6aa6aaf0da99cd3fa911edc7",
+      "idNo": "1976926558",
+      "type": "front",
+      "channel": "accord",
+      "fileType": "image/png",
+      "validityDate": "2031-04-02",
+      "idCheck": true,
+      "isApproval": true,
+      "isDisabled": false,
+      "createdAt": "2026-09-13T12:00:00.000Z",
+      "updatedAt": "2026-09-13T12:00:00.000Z"
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
 ## `GET /v1/customers/identity-documents/{id}` — belge detayı
 
 Liste alanlarına ek olarak `description` ve **`data`** (OCR / doğrulama çıkarım sonucu) döner.
@@ -46,9 +84,56 @@ Liste alanlarına ek olarak `description` ve **`data`** (OCR / doğrulama çıka
   Görsel referansları (`imageUrl`, `imageId` vb.) ve AI ham çıktıları hiçbir uçta dönmez. Belge içeriği indirme ucu bu sürümde yoktur.
 </Warning>
 
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/identity-documents/6aa6aaf0da99cd3fa911edc7' \
+  -u 'apiUserId:secretKey'
+```
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6aa6aaf0da99cd3fa911edc7",
+    "idNo": "1976926558",
+    "type": "front",
+    "channel": "accord",
+    "fileType": "image/png",
+    "validityDate": "2031-04-02",
+    "idCheck": true,
+    "isApproval": true,
+    "isDisabled": false,
+    "description": null,
+    "data": {
+      "nameSurname": "ÖRNEK MÜŞTERİ",
+      "idNo": "1976926558",
+      "birthday": "1985-06-14"
+    },
+    "createdAt": "2026-09-13T12:00:00.000Z",
+    "updatedAt": "2026-09-13T12:00:00.000Z"
+  },
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z"
+  }
+}
+```
+
 ## `POST /v1/customers/identity-documents` — belge görseli yükleme
 
 Müşteri tanı (accord) akışı için kimlik veya pasaport görseli yükler. Görsel, belge servisine güvenle taşınır ve belge kaydı oluşur.
+
+### Örnek istek
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/customers/identity-documents' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/json' \
+  -d '{"data": {"idNo": "1976926558", "type": "front", "fileName": "kimlik-on.png", "mimeType": "image/png", "content": "iVBORw0KGgo..."}}'
+```
 
 ### İstek gövdesi
 

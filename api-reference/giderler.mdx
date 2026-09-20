@@ -3,9 +3,16 @@ title: "Giderler"
 description: "Gider pusulası kayıtları — belge, mahiyet ve kalem satırlarıyla"
 ---
 
-Giderler kaynağı, şirketinizin gider pusulası kayıtlarını sunar. Oluşturma ve kesinleştirme için [Gider pusulası oluşturma](/api-reference/gider-pusulasi-olusturma) sayfasına bakın.
+Giderler kaynağı, şirketinizin gider pusulası kayıtlarını sunar. Oluşturma ve kesinleştirme için [Gider pusulası işlemleri](/api-reference/gider-pusulasi-olusturma) sayfasına bakın.
 
 ## `GET /v1/expenses` — gider listesi
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/expenses?startDate=2026-09-01T00:00:00.000Z&pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
 
 ### Sorgu parametreleri
 
@@ -29,6 +36,44 @@ Sıralama whitelist'i: `transactionDate`, `createdAt`, `updatedAt`, `amount`. Va
 
 `id`, `stamp`, `serial`, `number`, `transactionDate`, `amount`, `exchanges`, `quantity`, `unitName`, `attribute` (mahiyet), `idNo`, `nameSurname`, `bankName`, `bankCode`, `isCheck`, `isExcel`, `printStamp`, `printDate`, `createdDate`, `updatedAt`
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6aae79498d76c7a5471ede43",
+      "serial": "C",
+      "number": "160998",
+      "transactionDate": "2026-09-19T11:58:00.000Z",
+      "amount": 18730,
+      "exchanges": 6848.41,
+      "quantity": 2.5,
+      "unitName": "GRM",
+      "attribute": "GRAM SAF ALTIN",
+      "idNo": "1976926558",
+      "nameSurname": "ÖRNEK SATICI",
+      "bankName": "ÖRNEK BANKASI",
+      "bankCode": "0012",
+      "isCheck": true,
+      "isExcel": false,
+      "printDate": "2026-09-19T12:00:15.878Z",
+      "createdDate": "2026-09-19T11:59:00.000Z",
+      "updatedAt": "2026-09-19T12:00:15.878Z"
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
 ## `GET /v1/expenses/{id}` — gider detayı
 
 Liste alanlarına ek olarak:
@@ -43,5 +88,57 @@ Liste alanlarına ek olarak:
 | `bankTransactionId` | İlgili banka hareketi — [Banka hareketi detayı](/api-reference/banka-hareketleri) ile çapraz sorgulanabilir |
 
 <Note>
-  Gider pusulası oluşturma, kesinleştirme ve taslak iptali için [Gider pusulası oluşturma](/api-reference/gider-pusulasi-olusturma) sayfasına bakın. API üzerinden oluşturulan pusulalar da bu uçlarda görünür.
+  Gider pusulası oluşturma, kesinleştirme ve taslak iptali için [Gider pusulası işlemleri](/api-reference/gider-pusulasi-olusturma) sayfasına bakın. API üzerinden oluşturulan pusulalar da bu uçlarda görünür.
 </Note>
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/expenses/6aae79498d76c7a5471ede43' \
+  -u 'apiUserId:secretKey'
+```
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6aae79498d76c7a5471ede43",
+    "serial": "C",
+    "number": "160998",
+    "transactionDate": "2026-09-19T11:58:00.000Z",
+    "amount": 18730,
+    "exchanges": 6848.41,
+    "quantity": 2.5,
+    "unitName": "GRM",
+    "attribute": "GRAM SAF ALTIN",
+    "idNo": "1976926558",
+    "nameSurname": "ÖRNEK SATICI",
+    "printDate": "2026-09-19T12:00:15.878Z",
+    "description": "ALTIN ALIMI",
+    "customerInfo": {
+      "TaxNumber": "1976926558",
+      "Name": "ÖRNEK SATICI",
+      "City": "İSTANBUL",
+      "Country": "TÜRKİYE"
+    },
+    "currentCode": null,
+    "bankTransactionId": "6aae791c1ae24632118287e3",
+    "lines": [
+      {
+        "quantity": 2.5,
+        "attribute": "GRAM SAF ALTIN",
+        "unitName": "GRM",
+        "price": 7492,
+        "amount": 18730,
+        "stockCode": "GRALTIN"
+      }
+    ]
+  },
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z"
+  }
+}
+```

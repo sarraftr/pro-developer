@@ -7,6 +7,13 @@ Banka hesapları kaynağı, şirketin gerçek banka hesaplarını (`bank=true`; 
 
 ## `GET /v1/bank-accounts` — hesap listesi
 
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/bank-accounts?pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
+
 ### Sorgu parametreleri
 
 Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
@@ -45,6 +52,42 @@ Sıralama whitelist'i: `createdDate`, `name`, `balance`, `updatedAt`. Varsayıla
 | `lastCheckSize` | Son sorguda çekilen hareket sayısı |
 | `updatedAt` | Son güncelleme zamanı (bakiye/senkron güncellemesi de ilerletir) |
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6a5f1bb8e2883761a7c61301",
+      "name": "TİCARİ HESAP",
+      "bankName": "ÖRNEK BANKASI",
+      "bankCode": "0012",
+      "iban": "TR000000000000000000000000",
+      "currency": "TRY",
+      "type": "vadesiz",
+      "default": true,
+      "isApi": true,
+      "isDemo": false,
+      "balance": 1284530.44,
+      "lastCheckAt": "2026-09-20T08:45:00.000Z",
+      "lastTransactionAt": "2026-09-20T08:31:00.000Z",
+      "lastCheckStatus": "success",
+      "createdDate": "2025-02-04T09:00:00.000Z",
+      "updatedAt": "2026-09-20T08:45:00.000Z"
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
 ## `GET /v1/bank-accounts/{id}` — hesap detayı
 
 Liste alanlarına ek olarak:
@@ -63,3 +106,38 @@ Liste alanlarına ek olarak:
 <Tip>
   Bakiyeleri tazelemek için [Banka sorgusu tetikleme](/api-reference/banka-sorgu-tetikleme) ucunu kullanın; ardından hesap listesini yeniden okuyun.
 </Tip>
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/bank-accounts/6a5f1bb8e2883761a7c61301' \
+  -u 'apiUserId:secretKey'
+```
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6a5f1bb8e2883761a7c61301",
+    "name": "TİCARİ HESAP",
+    "bankName": "ÖRNEK BANKASI",
+    "bankCode": "0012",
+    "iban": "TR000000000000000000000000",
+    "currency": "TRY",
+    "balance": 1284530.44,
+    "lastCheckAt": "2026-09-20T08:45:00.000Z",
+    "lastCheckStatus": "success",
+    "subAccounts": [],
+    "expiryDay": null,
+    "commission": 0,
+    "archived": false,
+    "updatedAt": "2026-09-20T08:45:00.000Z"
+  },
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z"
+  }
+}
+```

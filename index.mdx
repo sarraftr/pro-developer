@@ -1,35 +1,50 @@
 ---
 title: "SarrafPro Developer"
-description: "SarrafPro Dış API (v1) geliştirici portalı — cari hesaplar, banka hareketleri, uyum ve belge uçları"
+description: "SarrafPro Dış API (v1) geliştirici portalı — cari hesaplar, uyum, banka hareketleri, fatura ve gider pusulası uçları"
 ---
 
-SarrafPro Developer portalı; e-ticaret siteleri, muhasebe programları ve iş ortaklarının SarrafPro verilerine **güvenli, sürümlenmiş ve donmuş sözleşmeli** erişimini sağlayan Dış API'nin (v1) teknik dokümantasyonudur.
-
-## Neler yapabilirsiniz?
+SarrafPro Dış API (v1); e-ticaret siteleri, muhasebe programları ve iş ortaklarının SarrafPro verilerine **güvenli, sürümlenmiş ve donmuş sözleşmeli** erişimini sağlar. Kayıtları okuyabilir, fatura ve gider pusulası oluşturabilirsiniz.
 
 <CardGroup cols={2}>
   <Card title="Cari hesaplar" icon="users" href="/api-reference/musteriler">
     Müşteri kayıtlarını listeleyin, detayını okuyun; hızlı cari ekleyin veya müşteri tanı formu açın.
   </Card>
-  <Card title="Banka entegrasyonu" icon="building-columns" href="/api-reference/banka-hareketleri">
-    Banka hareketlerini ve hesap bakiyelerini okuyun, dilerseniz banka sorgusunu API'den tetikleyin.
-  </Card>
-  <Card title="Faturalar" icon="file-invoice" href="/api-reference/faturalar">
-    Sistem üzerinden kesilen faturaları kalem satırlarına kadar okuyun.
-  </Card>
+
   <Card title="Uyum ve sicil" icon="shield-check" href="/api-reference/uyum-durum-sorgusu">
-    idNo veya ad soyad ile tek çağrıda kayıt, sicil ve doğrulama durumu; müşteri tanı formları, kimlik belgeleri ve yaptırım sorguları.
+    Tek çağrıda kayıt, sicil ve doğrulama durumu; kimlik belgeleri ve yaptırım sorguları.
+  </Card>
+
+  <Card title="Banka" icon="building-columns" href="/api-reference/banka-hareketleri">
+    Banka hareketlerini ve hesap bakiyelerini okuyun, banka sorgusunu API'den tetikleyin.
+  </Card>
+
+  <Card title="Faturalar" icon="file-invoice" href="/api-reference/fatura-olusturma">
+    Banka hareketinden veya serbest fatura kesin, PDF bağlantısını alın, taslakları iptal edin.
+  </Card>
+
+  <Card title="Gider pusulası" icon="receipt" href="/api-reference/gider-pusulasi-olusturma">
+    Giden banka hareketinden veya serbest pusula oluşturun ve kesinleştirin.
+  </Card>
+
+  <Card title="Ortak sözleşme" icon="book-open" href="/api-reference/genel-bakis">
+    Kimlik doğrulama, cevap zarfı, hata kodları, sayfalama ve filtreleme — tüm uçlarda aynı.
   </Card>
 </CardGroup>
 
-## Başlamadan önce
+## Temel bilgiler
 
-Tüm uçlar `api.sarraf.pro` ana bilgisayarında `/v1` önekiyle yayınlanır ve HTTP Basic kimlik doğrulaması (`apiUserId` + `secretKey`) gerektirir.
+| | |
+|---|---|
+| Base URL | `https://api.sarraf.pro` |
+| Sürüm öneki | `/v1` |
+| Kimlik doğrulama | HTTP Basic — `apiUserId` : `secretKey` |
+| Cevap biçimi | `success` / `data` / `meta` zarfı; hatada `error` + `traceId` |
 
-<Card title="Quickstart" icon="rocket" href="/quickstart">
-  API anahtarınızı üretip ilk isteğinizi birkaç dakikada atın.
-</Card>
+```bash
+curl 'https://api.sarraf.pro/v1/customers?pageSize=1' \
+  -u 'apiUserId:secretKey'
+```
 
-<Card title="Genel Bakış" icon="book-open" href="/api-reference/genel-bakis">
-  Cevap zarfı, hata kodları, sayfalama ve filtreleme standartları — tüm uçlarda ortak kurallar.
+<Card title="Hızlı başlangıç" icon="rocket" href="/quickstart">
+  Anahtarınızı alın, ilk isteğinizi atın ve ilk belgenizi güvenle oluşturun.
 </Card>

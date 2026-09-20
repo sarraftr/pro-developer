@@ -1,9 +1,9 @@
 ---
-title: "Fatura oluşturma"
-description: "Banka hareketinden veya serbest olarak e-fatura oluşturun ve gönderin"
+title: "Fatura işlemleri"
+description: "Kalem şablonu seçin, tutarı hesaplatın, faturayı oluşturup gönderin, taslağı iptal edin"
 ---
 
-Fatura oluşturma uçları, SarrafPro'nun kendi fatura motorunu dışarıya açar: kalemler şablona göre hesaplanır, fatura türü (istisna / özel matrah / satış) belirlenir ve belge e-belge entegratörüne gönderilir. Kesilen fatura, aynı anda [Faturalar](/api-reference/faturalar) uçlarında görünür hale gelir.
+Fatura oluşturma uçları, SarrafPro'nun kendi fatura motorunu dışarıya açar: kalemler şablona göre hesaplanır, fatura türü (istisna / özel matrah / satış) belirlenir ve belge e-belge servisine gönderilir. Kesilen fatura, aynı anda [Faturalar](/api-reference/faturalar) uçlarında görünür hale gelir.
 
 İki kaynak desteklenir:
 
@@ -19,6 +19,13 @@ Fatura oluşturma uçları, SarrafPro'nun kendi fatura motorunu dışarıya aça
 ## `GET /v1/invoices/templates` — kalem şablonları
 
 Fatura kesiminde kullanılabilecek kalem şablonlarını listeler. Dönen `key` değeri, fatura uçlarındaki `templateKey` alanında kullanılır.
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/invoices/templates?pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
 
 ### Sorgu parametreleri
 
@@ -45,9 +52,39 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
   Şablonun iç hesap parametreleri (oran, işçilik, maliyet, ek kalemler) API'de dönmez.
 </Note>
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "key": "68cbdb89113005ecca208627",
+      "title": "GRAM ALTIN",
+      "lineName": "GRAM SAF ALTIN",
+      "material": "gold",
+      "unitType": "GRM",
+      "type": "reason",
+      "statusType": "all",
+      "isDefault": true,
+      "order": 0,
+      "exchange": 6848.41
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
 ## `POST /v1/invoices/preview` — ön hesaplama
 
-Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **Entegratöre gönderim yapılmaz, fatura kaydı oluşmaz.** Gövde `POST /v1/invoices` ile aynıdır; yalnız `isDraft` ve `allowDuplicate` alanları kullanılamaz.
+Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **E-belge servisine gönderim yapılmaz, fatura kaydı oluşmaz.** Gövde `POST /v1/invoices` ile aynıdır; yalnız `isDraft` ve `allowDuplicate` alanları kullanılamaz.
 
 ```json
 {
@@ -59,6 +96,15 @@ Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **E
     "paymentType": "bank"
   }
 }
+```
+
+### Örnek istek
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/invoices/preview' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/json' \
+  -d '{"data": {"source": "manual", "amount": 100000, "idNo": "11111111111", "nameSurname": "NİHAİ TÜKETİCİ", "paymentType": "bank"}}'
 ```
 
 ### Cevap — `200`
@@ -92,6 +138,15 @@ Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **E
 | `lines[]` | Kalem satırları — alan anlamları [Faturalar](/api-reference/faturalar) sayfasındaki kalem tablosuyla aynıdır |
 
 ## `POST /v1/invoices` — fatura oluşturma ve gönderimi
+
+### Örnek istek
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/invoices' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/json' \
+  -d '{"data": {"source": "manual", "amount": 100000, "idNo": "11111111111", "nameSurname": "NİHAİ TÜKETİCİ", "paymentType": "bank", "isDraft": true}}'
+```
 
 ### İstek gövdesi — banka hareketinden
 
@@ -144,7 +199,7 @@ Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **E
 | `currentCode` | serbest | Muhasebe cari kodu |
 | `invoiceType` | serbest | `ISTISNA`, `OZELMATRAH`, `SATIS`; verilmezse veya `OTOMATIK` gönderilirse tür kalem şablonundan türetilir |
 | `customerInfo` | serbest | Faturada kullanılacak müşteri bilgisi: `nameSurname`, `taxOffice`, `address`, `cities`, `states`, `phone`, `email` |
-| `isDraft` | her ikisi | `true` ise entegratörde yalnız taslak oluşturulur; resmî fatura kesilmez |
+| `isDraft` | her ikisi | `true` ise e-belge servisinde yalnız taslak oluşturulur; resmî fatura kesilmez |
 | `allowDuplicate` | serbest | `true` ise mükerrer kaydı kontrolü atlanır |
 
 Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir; alan sessizce yok sayılmaz.
@@ -174,12 +229,12 @@ Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir; alan ses
 |---|---|
 | `invoiceId` | Oluşan fatura kaydı — `GET /v1/invoices/{id}` ile okunur. Taslakta `null` |
 | `sourceId` | Banka kaynağında hareket kimliği; serbest faturada oluşan fatura kaydının kimliği |
-| `uuid` / `invoiceNumber` | Entegratör belge kimliği ve fatura numarası |
+| `uuid` / `invoiceNumber` | Belge kimliği (ETTN) ve fatura numarası |
 | `channel` | Faturanın kesildiği kanal: `earchive` veya `einvoice` |
 | `pdfUrl` | Faturanın PDF görüntüleme bağlantısı; taslakta ve belge kaynağı uygun değilse `null` |
 | `totals` | Oluşan fatura kaydının tutar özeti. Taslakta `null` — toplamlar için `preview` kullanılır |
 
-Taslak (`isDraft: true`) isteklerinde HTTP **200** döner: entegratörde taslak oluşur, resmî fatura kesilmez, `invoiceId` ve `totals` boş gelir.
+Taslak (`isDraft: true`) isteklerinde HTTP **200** döner: belge serviside taslak oluşur, resmî fatura kesilmez, `invoiceId` ve `totals` boş gelir.
 
 ### Hatalar
 
@@ -190,7 +245,7 @@ Taslak (`isDraft: true`) isteklerinde HTTP **200** döner: entegratörde taslak 
 | Hareket faturalandırılmış / faturalandırma için planlanmış | 409 | `CONFLICT` — `details[0]` mevcut faturanın `uuid` ve `invoiceNumber` bilgisini taşır |
 | Aynı gün, aynı kimlik ve aynı tutar ile fatura kesilmiş | 409 | `CONFLICT` — `details[0].existingId`; bilinçli tekrar için `allowDuplicate: true` |
 | TCKN/VKN doğrulanamadı, kalemler hesaplanamadı, tutar çok düşük, hızlı fatura tanımları eksik | 422 | `VALIDATION_FAILED` |
-| E-belge entegratörü hatası | 502 | `UPSTREAM_ERROR` — `error.details` entegratörün hata listesini taşır |
+| E-belge servisi hatası | 502 | `UPSTREAM_ERROR` — `error.details` servisin hata listesini taşır |
 
 <Note>
   Mükerrer koruma kaynak bazlıdır. Banka hareketi bir kez faturalandırılır; ikinci istek `409` alır. Serbest faturada aynı gün + aynı kimlik + aynı tutar kontrol edilir. Ağ hatası nedeniyle cevabı alamadığınız bir istekte, tekrar denemeden önce `GET /v1/invoices` üzerinden faturanın kesilip kesilmediğini doğrulayın.
@@ -204,8 +259,15 @@ Taslak faturayı iptal eder. **Yalnız taslak iptal edilir**; kesilmiş fatura b
 
 | `id` | Ne silinir |
 |---|---|
-| `uuid` | Entegratördeki taslak belge |
+| `uuid` | E-belge servisindeki taslak belge |
 | `sourceId` | Serbest fatura taslağının gönderilmemiş yerel kaydı |
+
+### Örnek istek
+
+```bash
+curl -X DELETE 'https://api.sarraf.pro/v1/invoices/0075cc68-e90b-49c2-8434-0d5f779c72bf' \
+  -u 'apiUserId:secretKey'
+```
 
 ### Cevap — `200`
 
@@ -217,7 +279,7 @@ Taslak faturayı iptal eder. **Yalnız taslak iptal edilir**; kesilmiş fatura b
 }
 ```
 
-`target` alanı `draft` (entegratördeki taslak) veya `record` (yerel kayıt) değerini alır; `channel` yalnız taslak silmede dolar.
+`target` alanı `draft` (e-belge servisindeki taslak) veya `record` (yerel kayıt) değerini alır; `channel` yalnız taslak silmede dolar.
 
 ### Hatalar
 
@@ -227,4 +289,4 @@ Taslak faturayı iptal eder. **Yalnız taslak iptal edilir**; kesilmiş fatura b
 | Taslak veya kayıt bulunamadı | 404 | `RESOURCE_NOT_FOUND` |
 | Kesilmiş fatura iptal edilmek istendi | 409 | `CONFLICT` |
 | Firma e-belge entegrasyonu tanımlı değil | 422 | `VALIDATION_FAILED` |
-| E-belge entegratörü hatası | 502 | `UPSTREAM_ERROR` |
+| E-belge servisi hatası | 502 | `UPSTREAM_ERROR` |

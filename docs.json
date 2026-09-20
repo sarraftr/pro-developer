@@ -39,7 +39,7 @@
             ]
           },
           {
-            "group": "Banka Entegrasyonu",
+            "group": "Banka",
             "pages": [
               "api-reference/banka-hesaplari",
               "api-reference/banka-hareketleri",
@@ -64,7 +64,55 @@
       },
       {
         "tab": "API Referansı",
-        "openapi": "api-reference/openapi.json"
+        "groups": [
+          {
+            "group": "Müşteriler",
+            "openapi": "api-reference/openapi.json",
+            "pages": [
+              "GET /v1/customers",
+              "GET /v1/customers/{id}",
+              "GET /v1/customers/check",
+              "GET /v1/customers/verifications",
+              "GET /v1/customers/verifications/{id}",
+              "GET /v1/customers/identity-documents",
+              "GET /v1/customers/identity-documents/{id}",
+              "GET /v1/customers/sanction-checks",
+              "GET /v1/customers/sanction-checks/{id}",
+              "GET /v1/customers/events",
+              "GET /v1/customers/events/{id}",
+              "GET /v1/customers/histories",
+              "GET /v1/customers/histories/{id}"
+            ]
+          },
+          {
+            "group": "Banka",
+            "openapi": "api-reference/openapi.json",
+            "pages": [
+              "GET /v1/bank-accounts",
+              "GET /v1/bank-accounts/{id}",
+              "GET /v1/bank-transactions",
+              "GET /v1/bank-transactions/{id}"
+            ]
+          },
+          {
+            "group": "Faturalar",
+            "openapi": "api-reference/openapi.json",
+            "pages": [
+              "GET /v1/invoices",
+              "GET /v1/invoices/{id}",
+              "GET /v1/invoices/templates"
+            ]
+          },
+          {
+            "group": "Giderler",
+            "openapi": "api-reference/openapi.json",
+            "pages": [
+              "GET /v1/expenses",
+              "GET /v1/expenses/{id}",
+              "GET /v1/expenses/templates"
+            ]
+          }
+        ]
       }
     ],
     "global": {
@@ -124,5 +172,18 @@
   },
   "fonts": {
     "family": "Plus Jakarta Sans"
+  },
+  "description": "SarrafPro Dış API (v1) geliştirici dokümantasyonu — cari hesaplar, uyum, banka hareketleri, fatura ve gider pusulası uçları.",
+  "api": {
+    "playground": {
+      "display": "interactive"
+    }
+  },
+  "seo": {
+    "metatags": {
+      "og:site_name": "SarrafPro Developer",
+      "og:type": "website",
+      "og:locale": "tr_TR"
+    }
   }
 }

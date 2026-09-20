@@ -7,6 +7,13 @@ Faturalar kaynağı, SarrafPro üzerinden kesilen e-faturaların kayıtlarını 
 
 ## `GET /v1/invoices` — fatura listesi
 
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/invoices?startDate=2026-09-01T00:00:00.000Z&pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
+
 ### Sorgu parametreleri
 
 Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
@@ -32,6 +39,40 @@ Sıralama whitelist'i: `transactionDate`, `payableTotal`. Varsayılan `transacti
 | `linesTotal`, `kdvTotal`, `allowanceTotal`, `payableTotal` | Tutar özeti (kalem toplamı, KDV, iskonto, ödenecek) |
 | `customer` | `{ taxNumber, name }` — müşteri özeti |
 | `idNo` | Müşteri TCKN/VKN |
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6aae937b8d76c7a547248699",
+      "transactionDate": "2026-09-19T12:00:00.000Z",
+      "invoiceNumber": "SAR2026000000123",
+      "invoiceType": "earchive",
+      "invoiceStatus": true,
+      "linesTotal": 99988.4,
+      "kdvTotal": 11.6,
+      "allowanceTotal": 0,
+      "payableTotal": 100000,
+      "customer": {
+        "taxNumber": "1976926558",
+        "name": "ÖRNEK MÜŞTERİ"
+      },
+      "idNo": "1976926558"
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
 
 ## `GET /v1/invoices/{id}` — fatura detayı
 
@@ -60,6 +101,72 @@ Liste alanlarına ek olarak:
 </Note>
 
 <Note>
-  Fatura oluşturma ve gönderimi için [Fatura oluşturma](/api-reference/fatura-olusturma) sayfasına bakın. API üzerinden kesilen faturalar da bu uçlarda görünür.
+  Fatura oluşturma, gönderim ve taslak iptali için [Fatura işlemleri](/api-reference/fatura-olusturma) sayfasına bakın. API üzerinden kesilen faturalar da bu uçlarda görünür.
 </Note>
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/invoices/6aae937b8d76c7a547248699' \
+  -u 'apiUserId:secretKey'
+```
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6aae937b8d76c7a547248699",
+    "transactionDate": "2026-09-19T12:00:00.000Z",
+    "invoiceNumber": "SAR2026000000123",
+    "invoiceType": "earchive",
+    "invoiceStatus": true,
+    "linesTotal": 99988.4,
+    "kdvTotal": 11.6,
+    "allowanceTotal": 0,
+    "payableTotal": 100000,
+    "idNo": "1976926558",
+    "customer": {
+      "taxNumber": "1976926558",
+      "name": "ÖRNEK MÜŞTERİ",
+      "taxOffice": "BAHÇELİEVLER",
+      "address": "ÖRNEK MAH. ÖRNEK SOK. NO:1",
+      "district": "Bahçelievler",
+      "city": "İstanbul",
+      "country": "TÜRKİYE"
+    },
+    "invoiceInfo": {
+      "type": "earchive",
+      "uuid": "0075cc68-e90b-49c2-8434-0d5f779c72bf",
+      "invoiceNumber": "SAR2026000000123",
+      "status": true
+    },
+    "pdfUrl": "https://printer.sarraf.pro/PdfPreview?UUID=0075cc68-e90b-49c2-8434-0d5f779c72bf",
+    "lines": [
+      {
+        "name": "GRAM SAF ALTIN",
+        "quantity": 14.5,
+        "unitType": "GRM",
+        "stockCode": "GRALTIN",
+        "price": 6891.75,
+        "amount": 99930.4,
+        "lineTotal": 99930.4,
+        "kdvPercent": 0,
+        "kdvTotal": 0,
+        "allowancePrice": 0,
+        "allowanceTotal": 0,
+        "ozelMatrahTotal": 99930.4,
+        "isExtra": false,
+        "isDefault": true,
+        "isLabor": false
+      }
+    ]
+  },
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z"
+  }
+}
+```
 

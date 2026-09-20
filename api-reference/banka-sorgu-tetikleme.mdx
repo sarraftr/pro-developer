@@ -7,6 +7,15 @@ Bu aksiyon ucu, şirketin entegre banka hesapları için banka hareket sorgusunu
 
 ## `POST /v1/bank-queries`
 
+### Örnek istek
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/bank-queries' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/json' \
+  -d '{"data": {"accountIds": ["6a5f1bb8e2883761a7c61301"]}}'
+```
+
 ### İstek gövdesi
 
 ```json

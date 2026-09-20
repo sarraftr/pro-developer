@@ -9,6 +9,13 @@ Müşteri kayıtlarındaki önemli değişiklikler (güncelleme / kaldırma) den
 
 Varsayılan sıralama **en yeni önce** (`createdAt:desc`).
 
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/histories?customerId=6a9c7e2bf2fb39feccb3480b&pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
+
 ### Sorgu parametreleri
 
 | Parametre | Tür | Açıklama |
@@ -22,6 +29,61 @@ Varsayılan sıralama **en yeni önce** (`createdAt:desc`).
 
 `id`, `customerId`, `type`, `createdAt`, `updatedAt`
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6a93cd22da99cd3fa911bb31",
+      "customerId": "6a9c7e2bf2fb39feccb3480b",
+      "type": "update",
+      "createdAt": "2026-08-02T10:12:00.000Z",
+      "updatedAt": "2026-08-02T10:12:00.000Z"
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
 ## `GET /v1/customers/histories/{id}` — kayıt detayı
 
 Liste alanlarına ek olarak **`data`** döner: değişiklik anındaki kayıt anlık görüntüsü (önceki değerler).
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/histories/6a93cd22da99cd3fa911bb31' \
+  -u 'apiUserId:secretKey'
+```
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6a93cd22da99cd3fa911bb31",
+    "customerId": "6a9c7e2bf2fb39feccb3480b",
+    "type": "update",
+    "createdAt": "2026-08-02T10:12:00.000Z",
+    "updatedAt": "2026-08-02T10:12:00.000Z",
+    "data": {
+      "phone": "5009998877",
+      "email": "eski@example.com"
+    }
+  },
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z"
+  }
+}
+```

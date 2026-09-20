@@ -1,6 +1,6 @@
 ---
-title: "Gider pusulası oluşturma"
-description: "Banka hareketinden veya serbest olarak gider pusulası oluşturun ve kesinleştirin"
+title: "Gider pusulası işlemleri"
+description: "Kalem şablonu seçin, tutarı hesaplatın, pusulayı oluşturup kesinleştirin, taslağı iptal edin"
 ---
 
 Gider pusulası oluşturma uçları, faturadakiyle aynı deseni izler: kalem seçilen şablona göre hesaplanır, pusula oluşturulur ve kesinleştirilir. Oluşan kayıt [Giderler](/api-reference/giderler) uçlarında görünür.
@@ -20,6 +20,13 @@ Gider pusulası oluşturma uçları, faturadakiyle aynı deseni izler: kalem se�
 
 Gider pusulasında kullanılabilecek şablonları listeler. Dönen `key` değeri, `templateKey` alanında kullanılır.
 
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/expenses/templates?pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
+
 ### Sorgu parametreleri
 
 | Parametre | Tür | Açıklama |
@@ -38,6 +45,36 @@ Gider pusulasında kullanılabilecek şablonları listeler. Dönen `key` değeri
 | `isDefault` | Firmanızın gider pusulası varsayılan şablonu mu |
 | `exchange` | Mal türü için güncel liste fiyatı |
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "key": "68cbdb89113005ecca208627",
+      "title": "GRAM ALTIN",
+      "lineName": "GRAM SAF ALTIN",
+      "material": "gold",
+      "unitType": "GRM",
+      "type": "reason",
+      "statusType": "all",
+      "isDefault": true,
+      "order": 0,
+      "exchange": 6848.41
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
 ## `POST /v1/expenses/preview` — ön hesaplama
 
 Miktar, birim fiyat, mahiyet ve müşteri bilgisini hesaplar. **Kayıt oluşmaz, seri-sıra numarası tüketilmez.** Gövde `POST /v1/expenses` ile aynıdır; `isDraft` ve `allowDuplicate` kullanılamaz.
@@ -51,6 +88,15 @@ Miktar, birim fiyat, mahiyet ve müşteri bilgisini hesaplar. **Kayıt oluşmaz,
     "nameSurname": "ÖRNEK SATICI"
   }
 }
+```
+
+### Örnek istek
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/expenses/preview' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/json' \
+  -d '{"data": {"source": "manual", "amount": 50000, "idNo": "1976926558", "nameSurname": "ÖRNEK SATICI"}}'
 ```
 
 ### Cevap — `200`
@@ -79,6 +125,15 @@ Miktar, birim fiyat, mahiyet ve müşteri bilgisini hesaplar. **Kayıt oluşmaz,
 `expectedNumber` beklenen sıra numarasıdır; ön hesaplamada numara tüketilmez, kesin numara oluşturma cevabında döner.
 
 ## `POST /v1/expenses` — gider pusulası oluşturma
+
+### Örnek istek
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/expenses' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/json' \
+  -d '{"data": {"source": "manual", "amount": 50000, "idNo": "1976926558", "nameSurname": "ÖRNEK SATICI", "isDraft": true}}'
+```
 
 ### İstek gövdesi — banka hareketinden
 
@@ -177,6 +232,13 @@ Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir.
 Kesinleştirilmemiş gider pusulasını siler. **Kesinleştirilmiş pusula bu uçtan silinemez** ve `409` döner; kesinleştirilmiş kayıtların iptali panelden yürütülür.
 
 Silme sırasında pusulaya bağlı giden banka hareketi yeniden işlenebilir duruma döner.
+
+### Örnek istek
+
+```bash
+curl -X DELETE 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321' \
+  -u 'apiUserId:secretKey'
+```
 
 ### Cevap — `200`
 

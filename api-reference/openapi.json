@@ -1,9 +1,9 @@
 {
 	"openapi": "3.0.3",
 	"info": {
-		"title": "Sarraf API v1",
+		"title": "SarrafPro API v1",
 		"version": "1.0.0",
-		"description": "Sarraf sürümlü dış API yüzeyi. Bu sürüm salt okunurdur; e-ticaret siteleri ve muhasebe programları için mevcut kayıtların okunmasını sağlar. Kimlik doğrulama mevcut dış API ile aynıdır: HTTP Basic, base64(apiUserId:secretKey). Tüm yanıtlar sabit zarf formatındadır: başarılı yanıtta success/data/meta, hatalı yanıtta success/error{code,message,details}/traceId. Her yanıtta x-request-id başlığı döner ve traceId ile aynıdır."
+		"description": "SarrafPro sürümlü dış API yüzeyi. Cari hesaplar, uyum kayıtları, banka hesapları ve hareketleri okunabilir; fatura ve gider pusulası oluşturulup gönderilebilir. Kimlik doğrulama HTTP Basic'tir: base64(apiUserId:secretKey). Tüm yanıtlar sabit zarf formatındadır: başarılı yanıtta success/data/meta, hatalı yanıtta success/error{code,message,details}/traceId. Her yanıtta x-request-id başlığı döner ve traceId ile aynıdır."
 	},
 	"servers": [
 		{
@@ -1333,7 +1333,7 @@
 			"post": {
 				"operationId": "createInvoice",
 				"summary": "Fatura oluşturma ve gönderimi",
-				"description": "Fatura oluşturur ve e-belge entegratörüne gönderir. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — faturalandırılmamış bir gelen banka hareketinden. Hareket faturalandırılmış olarak işaretlenir ve panel yayın akışıyla aynı sonucu üretir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest fatura. Tutar, şablon ve ödeme bilgisi istekte verilir.\n\nBaşarılı gönderimde **201** döner ve `invoiceId` ile fatura `GET /v1/invoices/{id}` üzerinden okunabilir. `isDraft: true` gönderildiğinde entegratörde yalnız taslak oluşturulur; resmî fatura kesilmez, `invoiceId` ve `totals` boş döner ve yanıt **200**'dür.\n\nMükerrer gönderim koruması kaynak bazlıdır: banka hareketi zaten faturalandırılmışsa 409 döner; serbest faturada aynı gün + aynı kimlik + aynı tutar için kesilmiş fatura varsa 409 döner ve `allowDuplicate: true` ile bilinçli olarak aşılabilir.",
+				"description": "Fatura oluşturur ve e-belge servisine gönderir. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — faturalandırılmamış bir gelen banka hareketinden. Hareket faturalandırılmış olarak işaretlenir ve panel yayın akışıyla aynı sonucu üretir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest fatura. Tutar, şablon ve ödeme bilgisi istekte verilir.\n\nBaşarılı gönderimde **201** döner ve `invoiceId` ile fatura `GET /v1/invoices/{id}` üzerinden okunabilir. `isDraft: true` gönderildiğinde e-belge servisinde yalnız taslak oluşturulur; resmî fatura kesilmez, `invoiceId` ve `totals` boş döner ve yanıt **200**'dür.\n\nMükerrer gönderim koruması kaynak bazlıdır: banka hareketi zaten faturalandırılmışsa 409 döner; serbest faturada aynı gün + aynı kimlik + aynı tutar için kesilmiş fatura varsa 409 döner ve `allowDuplicate: true` ile bilinçli olarak aşılabilir.",
 				"tags": ["Invoices"],
 				"requestBody": {
 					"required": true,
@@ -1417,7 +1417,7 @@
 						"$ref": "#/components/responses/InternalError"
 					},
 					"502": {
-						"description": "E-belge entegratörü hatası. `error.details` entegratörün döndürdüğü hata listesini taşır.",
+						"description": "E-belge servisi hatası. `error.details` servisin döndürdüğü hata listesini taşır.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1433,7 +1433,7 @@
 			"get": {
 				"operationId": "getInvoice",
 				"summary": "Fatura detayı",
-				"description": "Tek faturanın geniş kaydını döner: tam müşteri bloğu, fatura kalem satırları (lines) ve tam entegratör bilgisi (invoiceInfo). Fatura PDF/görsel içeriği bu uçta yoktur.",
+				"description": "Tek faturanın geniş kaydını döner: tam müşteri bloğu, fatura kalem satırları (lines) ve tam belge bilgisi (invoiceInfo). Fatura PDF/görsel içeriği bu uçta yoktur.",
 				"tags": ["Invoices"],
 				"parameters": [
 					{
@@ -1484,7 +1484,7 @@
 			"delete": {
 				"operationId": "cancelInvoiceDraft",
 				"summary": "Taslak fatura iptali",
-				"description": "Taslak faturayı iptal eder. **Yalnız taslak iptal edilir; kesilmiş fatura bu uçtan silinemez** ve denendiğinde `409` döner.\n\n`id` iki değerden biri olabilir:\n\n- **Taslak `uuid`** (`POST /v1/invoices` taslak cevabındaki `uuid`) — entegratördeki taslak silinir.\n- **Kayıt kimliği** (serbest fatura taslağının `sourceId` değeri) — gönderilmemiş yerel fatura kaydı silinir.",
+				"description": "Taslak faturayı iptal eder. **Yalnız taslak iptal edilir; kesilmiş fatura bu uçtan silinemez** ve denendiğinde `409` döner.\n\n`id` iki değerden biri olabilir:\n\n- **Taslak `uuid`** (`POST /v1/invoices` taslak cevabındaki `uuid`) — e-belge servisindeki taslak silinir.\n- **Kayıt kimliği** (serbest fatura taslağının `sourceId` değeri) — gönderilmemiş yerel fatura kaydı silinir.",
 				"tags": ["Invoices"],
 				"parameters": [
 					{
@@ -1550,7 +1550,7 @@
 						"$ref": "#/components/responses/InternalError"
 					},
 					"502": {
-						"description": "E-belge entegratörü hatası.",
+						"description": "E-belge servisi hatası.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2861,7 +2861,7 @@
 			"post": {
 				"operationId": "previewInvoice",
 				"summary": "Fatura ön hesaplama",
-				"description": "Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **Hiçbir yan etkisi yoktur:** entegratöre gönderim yapılmaz, veritabanına kayıt yazılmaz. Gövde, `POST /v1/invoices` ile aynıdır; yalnız `isDraft` ve `allowDuplicate` alanları kullanılamaz. Dönen `lines` ve `totals`, fatura kesildiğinde `GET /v1/invoices/{id}` içinde görünecek değerlerle aynı hesaba dayanır.",
+				"description": "Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **Hiçbir yan etkisi yoktur:** e-belge servisine gönderim yapılmaz, veritabanına kayıt yazılmaz. Gövde, `POST /v1/invoices` ile aynıdır; yalnız `isDraft` ve `allowDuplicate` alanları kullanılamaz. Dönen `lines` ve `totals`, fatura kesildiğinde `GET /v1/invoices/{id}` içinde görünecek değerlerle aynı hesaba dayanır.",
 				"tags": ["Invoices"],
 				"requestBody": {
 					"required": true,
@@ -6072,7 +6072,7 @@
 							"isDraft": {
 								"type": "boolean",
 								"default": false,
-								"description": "true ise entegratörde yalnız taslak oluşturulur; resmî fatura kesilmez."
+								"description": "true ise e-belge servisinde yalnız taslak oluşturulur; resmî fatura kesilmez."
 							},
 							"allowDuplicate": {
 								"type": "boolean",
@@ -6253,7 +6253,7 @@
 					"uuid": {
 						"type": "string",
 						"nullable": true,
-						"description": "Entegratör belge kimliği."
+						"description": "Belge kimliği (ETTN)."
 					},
 					"invoiceNumber": {
 						"type": "string",
@@ -6311,7 +6311,7 @@
 					"target": {
 						"type": "string",
 						"enum": ["draft", "record"],
-						"description": "`draft`: entegratördeki taslak, `record`: gönderilmemiş yerel kayıt."
+						"description": "`draft`: e-belge servisindeki taslak, `record`: gönderilmemiş yerel kayıt."
 					},
 					"channel": {
 						"type": "string",

@@ -9,6 +9,13 @@ Sicil olayları, müşteriler hakkında kaydedilen risk değerlendirme kayıtlar
 
 Varsayılan sıralama **en yeni olay önce** (`eventDate:desc`).
 
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/events?idNo=1976926558&pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
+
 ### Sorgu parametreleri
 
 | Parametre | Tür | Açıklama |
@@ -29,6 +36,63 @@ Varsayılan sıralama **en yeni olay önce** (`eventDate:desc`).
 | `recordLevel` | Risk seviyesi (0-4) |
 | `comment` | Olay açıklaması |
 
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6a90bb11da99cd3fa911aa02",
+      "eventDate": "2026-07-19T00:00:00.000Z",
+      "customerId": "6a9c7e2bf2fb39feccb3480b",
+      "idNo": "1976926558",
+      "recordLevel": "normal",
+      "comment": "Sicil güncellemesi",
+      "createdAt": "2026-07-19T09:10:00.000Z",
+      "updatedAt": "2026-07-19T09:10:00.000Z"
+    }
+  ],
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 114,
+    "pages": 5
+  }
+}
+```
+
 ## `GET /v1/customers/events/{id}` — olay detayı
 
 Tek olay kaydını aynı alanlarla döner.
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/events/6a90bb11da99cd3fa911aa02' \
+  -u 'apiUserId:secretKey'
+```
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6a90bb11da99cd3fa911aa02",
+    "eventDate": "2026-07-19T00:00:00.000Z",
+    "customerId": "6a9c7e2bf2fb39feccb3480b",
+    "idNo": "1976926558",
+    "recordLevel": "normal",
+    "comment": "Sicil güncellemesi",
+    "createdAt": "2026-07-19T09:10:00.000Z",
+    "updatedAt": "2026-07-19T09:10:00.000Z"
+  },
+  "meta": {
+    "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
+    "timestamp": "2026-09-20T09:00:00.000Z"
+  }
+}
+```
