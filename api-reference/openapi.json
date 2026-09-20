@@ -1236,10 +1236,10 @@
 						"name": "sort",
 						"in": "query",
 						"required": false,
-						"description": "Sıralama: alan:asc|desc. İzinli alanlar: transactionDate, createdAt, updatedAt, payableTotal. Varsayılan transactionDate:asc.",
+						"description": "Sıralama: alan:asc|desc. İzinli alanlar: transactionDate, payableTotal. Varsayılan transactionDate:asc.",
 						"schema": {
 							"type": "string",
-							"pattern": "^(transactionDate|createdAt|updatedAt|payableTotal)(:(asc|desc))?$"
+							"pattern": "^(transactionDate|payableTotal)(:(asc|desc))?$"
 						}
 					},
 					{
@@ -1279,24 +1279,6 @@
 						}
 					},
 					{
-						"name": "integrator",
-						"in": "query",
-						"required": false,
-						"description": "Entegratör (invoiceInfo.integrator).",
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
-						"name": "module",
-						"in": "query",
-						"required": false,
-						"description": "Faturanın üretildiği modül.",
-						"schema": {
-							"type": "string"
-						}
-					},
-					{
 						"name": "startDate",
 						"in": "query",
 						"required": false,
@@ -1311,16 +1293,6 @@
 						"in": "query",
 						"required": false,
 						"description": "ISO-8601 tarih; transactionDate <= endDate.",
-						"schema": {
-							"type": "string",
-							"format": "date-time"
-						}
-					},
-					{
-						"name": "updatedSince",
-						"in": "query",
-						"required": false,
-						"description": "ISO-8601 tarih; yalnız bu tarihte veya sonra güncellenen kayıtlar döner (updatedAt >=).",
 						"schema": {
 							"type": "string",
 							"format": "date-time"
@@ -3556,10 +3528,6 @@
 			"InvoiceInfo": {
 				"type": "object",
 				"properties": {
-					"integrator": {
-						"type": "string",
-						"nullable": true
-					},
 					"type": {
 						"type": "string",
 						"nullable": true
@@ -4295,10 +4263,6 @@
 						"type": "string",
 						"nullable": true
 					},
-					"integrator": {
-						"type": "string",
-						"nullable": true
-					},
 					"invoiceStatus": {
 						"type": "boolean",
 						"nullable": true
@@ -4322,18 +4286,6 @@
 						"type": "string",
 						"nullable": true,
 						"description": "Müşteri TCKN/VKN."
-					},
-					"module": {
-						"type": "string",
-						"nullable": true
-					},
-					"createdAt": {
-						"type": "string",
-						"format": "date-time"
-					},
-					"updatedAt": {
-						"type": "string",
-						"format": "date-time"
 					}
 				}
 			},
@@ -4356,6 +4308,12 @@
 								"items": {
 									"$ref": "#/components/schemas/InvoiceLine"
 								}
+							},
+							"pdfUrl": {
+								"type": "string",
+								"nullable": true,
+								"format": "uri",
+								"description": "Faturanın PDF görüntüleme bağlantısı. Belge kaynağı uygun değilse null döner."
 							}
 						}
 					}
@@ -6014,10 +5972,6 @@
 						"enum": ["earchive", "einvoice", null],
 						"description": "Faturanın kesildiği kanal."
 					},
-					"integrator": {
-						"type": "string",
-						"nullable": true
-					},
 					"template": {
 						"$ref": "#/components/schemas/InvoiceTemplateSummary"
 					},
@@ -6029,6 +5983,12 @@
 						],
 						"nullable": true,
 						"description": "Oluşan fatura kaydının toplamları; taslakta null döner."
+					},
+					"pdfUrl": {
+						"type": "string",
+						"nullable": true,
+						"format": "uri",
+						"description": "Kesilen faturanın PDF görüntüleme bağlantısı. Taslakta ve belge kaynağı uygun değilse null döner."
 					}
 				}
 			},

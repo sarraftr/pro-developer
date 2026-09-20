@@ -162,9 +162,9 @@ Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir; alan ses
     "uuid": "0075cc68-e90b-49c2-8434-0d5f779c72bf",
     "invoiceNumber": "SAR2026000000123",
     "channel": "earchive",
-    "integrator": "nilvera",
     "template": { "key": "68cbdb89113005ecca208627", "title": "GRAM ALTIN", "lineName": "GRAM SAF ALTIN", "material": "gold" },
-    "totals": { "linesTotal": 99988.4, "kdvTotal": 11.6, "allowanceTotal": 0, "payableTotal": 100000 }
+    "totals": { "linesTotal": 99988.4, "kdvTotal": 11.6, "allowanceTotal": 0, "payableTotal": 100000 },
+    "pdfUrl": "https://printer.sarraf.pro/PdfPreview?UUID=..."
   },
   "meta": { "requestId": "...", "timestamp": "..." }
 }
@@ -175,7 +175,8 @@ Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir; alan ses
 | `invoiceId` | Oluşan fatura kaydı — `GET /v1/invoices/{id}` ile okunur. Taslakta `null` |
 | `sourceId` | Banka kaynağında hareket kimliği; serbest faturada oluşan fatura kaydının kimliği |
 | `uuid` / `invoiceNumber` | Entegratör belge kimliği ve fatura numarası |
-| `channel` / `integrator` | Faturanın kesildiği kanal ve entegratör |
+| `channel` | Faturanın kesildiği kanal: `earchive` veya `einvoice` |
+| `pdfUrl` | Faturanın PDF görüntüleme bağlantısı; taslakta ve belge kaynağı uygun değilse `null` |
 | `totals` | Oluşan fatura kaydının tutar özeti. Taslakta `null` — toplamlar için `preview` kullanılır |
 
 Taslak (`isDraft: true`) isteklerinde HTTP **200** döner: entegratörde taslak oluşur, resmî fatura kesilmez, `invoiceId` ve `totals` boş gelir.

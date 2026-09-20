@@ -15,13 +15,10 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
 |---|---|---|
 | `idNo` | string | Müşteri TCKN/VKN tam eşleşme |
 | `invoiceNumber` | string | Fatura numarası tam eşleşme |
-| `type` | string | Fatura türü |
-| `integrator` | string | Entegratör (Nilvera, GIB vb.) |
-| `module` | string | Faturanın üretildiği modül |
+| `type` | string | Belge türü: `earchive` (e-arşiv) veya `einvoice` (e-fatura) |
 | `startDate` / `endDate` | date-time | `transactionDate` (fatura/resmileştirme tarihi) aralığı |
-| `updatedSince` | date-time | Artımlı senkronizasyon |
 
-Sıralama whitelist'i: `transactionDate`, `createdAt`, `updatedAt`, `payableTotal`. Varsayılan `transactionDate:asc`.
+Sıralama whitelist'i: `transactionDate`, `payableTotal`. Varsayılan `transactionDate:asc`.
 
 ### Cevap alanları (liste öğesi)
 
@@ -30,18 +27,19 @@ Sıralama whitelist'i: `transactionDate`, `createdAt`, `updatedAt`, `payableTota
 | `id` | Fatura kayıt kimliği |
 | `transactionDate` | Fatura / resmileştirme tarihi |
 | `invoiceNumber` | Fatura numarası |
-| `invoiceType` / `integrator` / `invoiceStatus` | Tür, entegratör ve gönderim durumu |
+| `invoiceType` | Belge türü: `earchive` veya `einvoice` |
+| `invoiceStatus` | Gönderim durumu |
 | `linesTotal`, `kdvTotal`, `allowanceTotal`, `payableTotal` | Tutar özeti (kalem toplamı, KDV, iskonto, ödenecek) |
 | `customer` | `{ taxNumber, name }` — müşteri özeti |
 | `idNo` | Müşteri TCKN/VKN |
-| `module` | Üretildiği modül |
 
 ## `GET /v1/invoices/{id}` — fatura detayı
 
 Liste alanlarına ek olarak:
 
 - **`customer`** — tam blok: `taxNumber`, `name`, `taxOffice`, `address`, `district`, `city`, `phone`, `mail`, `webSite`, `country`
-- **`invoiceInfo`** — tam entegratör bilgisi: `integrator`, `type`, `uuid`, `invoiceNumber`, `status`
+- **`invoiceInfo`** — belge bilgisi: `type`, `uuid` (ETTN), `invoiceNumber`, `status`
+- **`pdfUrl`** — faturanın PDF görüntüleme bağlantısı; belge kaynağı uygun değilse `null`
 - **`lines[]`** — kalem satırları:
 
 | Kalem alanı | Anlam |
@@ -54,7 +52,11 @@ Liste alanlarına ek olarak:
 | `isExtra`, `isDefault`, `isLabor` | Ek kalem / varsayılan kalem / işçilik kalemi |
 
 <Note>
-  Fatura modelinde para birimi alanı tutulmaz; tutarlar kayıtlı haliyle döner. Fatura PDF/görsel içeriği bu sürümde API'de yoktur.
+  Fatura modelinde para birimi alanı tutulmaz; tutarlar kayıtlı haliyle döner.
+</Note>
+
+<Note>
+  `pdfUrl` doğrudan açılabilen bir görüntüleme bağlantısıdır; API'den ayrıca dosya indirmeniz gerekmez. Bağlantı yalnız detay ve fatura oluşturma cevaplarında döner, liste ucunda yer almaz.
 </Note>
 
 <Note>
