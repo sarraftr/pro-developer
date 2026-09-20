@@ -1,0 +1,196 @@
+---
+title: "Fatura oluşturma"
+description: "Banka hareketinden veya serbest olarak e-fatura oluşturun ve gönderin"
+---
+
+Fatura oluşturma uçları, SarrafPro'nun kendi fatura motorunu dışarıya açar: kalemler şablona göre hesaplanır, fatura türü (istisna / özel matrah / satış) belirlenir ve belge e-belge entegratörüne gönderilir. Kesilen fatura, aynı anda [Faturalar](/api-reference/faturalar) uçlarında görünür hale gelir.
+
+İki kaynak desteklenir:
+
+| Kaynak | Ne zaman kullanılır |
+|---|---|
+| `bankTransaction` | Faturalandırılmamış bir **gelen banka hareketi** faturalandırılır. Hareket, işlenmiş olarak işaretlenir. |
+| `manual` | Banka hareketine bağlı olmayan **serbest fatura**. Tutar, şablon ve ödeme bilgisi istekte verilir. |
+
+<Warning>
+  `POST /v1/invoices` **resmî mali belge üretir.** Denemelerinizi önce `POST /v1/invoices/preview` (yan etkisiz) ve `isDraft: true` (taslak) ile yapın. Faturanın API üzerinden iptali bu sürümde yoktur; iptal işlemleri panelden yürütülür.
+</Warning>
+
+## `GET /v1/invoices/templates` — kalem şablonları
+
+Fatura kesiminde kullanılabilecek kalem şablonlarını listeler. Dönen `key` değeri, fatura uçlarındaki `templateKey` alanında kullanılır.
+
+### Sorgu parametreleri
+
+Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `material` | string | `gold`, `silver`, `platin`, `paladyum`, `usd`, `eur`, `try` |
+| `type` | string | `reason`, `exceptional`, `normal`, `auto` |
+| `statusType` | string | `all`, `invoice`, `expense`. Verilmezse yalnız fatura için uygun şablonlar (`all`, `invoice`) döner |
+
+### Cevap alanları
+
+| Alan | Anlam |
+|---|---|
+| `key` | Şablon anahtarı — `templateKey` olarak kullanılır |
+| `title` / `lineName` | Şablon adı ve faturada görünecek kalem adı |
+| `material` / `unitType` | Mal türü ve kalem birimi (`GRM`, `C62`) |
+| `type` / `statusType` | Şablon türü ve kullanım alanı |
+| `isDefault` | Şablon gönderilmediğinde kullanılacak varsayılan şablon mu |
+| `exchange` | Şablonun mal türü için güncel liste fiyatı (0 ise fiyat bulunamamıştır) |
+
+<Note>
+  Şablonun iç hesap parametreleri (oran, işçilik, maliyet, ek kalemler) API'de dönmez.
+</Note>
+
+## `POST /v1/invoices/preview` — ön hesaplama
+
+Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **Entegratöre gönderim yapılmaz, fatura kaydı oluşmaz.** Gövde `POST /v1/invoices` ile aynıdır; yalnız `isDraft` ve `allowDuplicate` alanları kullanılamaz.
+
+```json
+{
+  "data": {
+    "source": "manual",
+    "amount": 100000,
+    "idNo": "11111111111",
+    "nameSurname": "NİHAİ TÜKETİCİ",
+    "paymentType": "bank"
+  }
+}
+```
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "source": "manual",
+    "sourceId": null,
+    "amount": 100000,
+    "exchanges": 6848.41,
+    "invoiceType": "OZELMATRAH",
+    "channel": "earchive",
+    "template": { "key": "68cbdb89113005ecca208627", "title": "GRAM ALTIN", "lineName": "GRAM SAF ALTIN", "material": "gold" },
+    "customer": { "taxNumber": "11111111111", "name": "NİHAİ TÜKETİCİ", "city": "İstanbul" },
+    "totals": { "linesTotal": 99988.4, "kdvTotal": 11.6, "allowanceTotal": 0, "payableTotal": 100000 },
+    "lines": [{ "name": "GRAM SAF ALTIN", "quantity": 14.5, "unitType": "GRM", "lineTotal": 99930.4, "isDefault": true }]
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+| Alan | Anlam |
+|---|---|
+| `invoiceType` | Hesaplanan fatura türü: `ISTISNA`, `OZELMATRAH` veya `SATIS` |
+| `channel` | Faturanın kesileceği kanal: alıcı e-fatura mükellefi ise `einvoice`, değilse `earchive` |
+| `template` | Hesapta kullanılan kalem şablonu |
+| `customer` | Faturada kullanılması beklenen müşteri bilgisi (cari/müşteri kaydı ve istekteki değerlerden çözümlenir) |
+| `totals` | Fatura kesildiğinde oluşacak tutar özeti |
+| `lines[]` | Kalem satırları — alan anlamları [Faturalar](/api-reference/faturalar) sayfasındaki kalem tablosuyla aynıdır |
+
+## `POST /v1/invoices` — fatura oluşturma ve gönderimi
+
+### İstek gövdesi — banka hareketinden
+
+```json
+{
+  "data": {
+    "source": "bankTransaction",
+    "bankTransactionId": "6aaf616b1ae2463211cf050c",
+    "templateKey": "68cbdb89113005ecca208627"
+  }
+}
+```
+
+### İstek gövdesi — serbest fatura
+
+```json
+{
+  "data": {
+    "source": "manual",
+    "amount": 100000,
+    "idNo": "1976926558",
+    "nameSurname": "ÖRNEK MÜŞTERİ",
+    "paymentType": "bank",
+    "bankName": "ZİRAAT BANKASI",
+    "iban": "TR000000000000000000000000",
+    "transactionDate": "2026-09-20T10:00:00.000Z",
+    "description": "SATIŞ AÇIKLAMASI"
+  }
+}
+```
+
+### Alanlar
+
+| Alan | Kaynak | Kural |
+|---|---|---|
+| `source` | her ikisi | **Zorunlu** — `bankTransaction` veya `manual` |
+| `bankTransactionId` | banka | **Zorunlu** — faturalandırılacak gelen hareket |
+| `amount` | serbest | **Zorunlu** — fatura tutarı (banka kaynağında hareketin tutarı kullanılır) |
+| `idNo` | her ikisi | Serbest faturada **zorunlu**. Banka kaynağında boş bırakılırsa hareketin kimlik bilgisi kullanılır. Nihai tüketici için `11111111111` |
+| `nameSurname` | her ikisi | Müşteri ad soyad / ünvan |
+| `templateKey` | her ikisi | Kalem şablonu; verilmezse firmanın varsayılan şablonu |
+| `exchanges` | her ikisi | Has/kur değeri; verilmezse güncel fiyat listesinden alınır |
+| `paymentType` | serbest | **Zorunlu** — `bank`, `pos`, `expense`, `other` |
+| `bankName`, `iban` | serbest | `paymentType: bank` için ödeme kaynağı |
+| `approvalCode` | serbest | `paymentType: pos` için POS onay kodu |
+| `expenseNumber` | serbest | `paymentType: expense` için mahsuplaşılan gider pusulası numarası |
+| `paymentNote` | serbest | `paymentType: other` için ödeme notu |
+| `transactionDate` / `paymentDate` | serbest | Fatura ve ödeme tarihi (varsayılan: şimdi) |
+| `description` | serbest | Fatura notu; satır satır fatura açıklamasına eklenir |
+| `currentCode` | serbest | Muhasebe cari kodu |
+| `invoiceType` | serbest | `ISTISNA`, `OZELMATRAH`, `SATIS`; verilmezse veya `OTOMATIK` gönderilirse tür kalem şablonundan türetilir |
+| `customerInfo` | serbest | Faturada kullanılacak müşteri bilgisi: `nameSurname`, `taxOffice`, `address`, `cities`, `states`, `phone`, `email` |
+| `isDraft` | her ikisi | `true` ise entegratörde yalnız taslak oluşturulur; resmî fatura kesilmez |
+| `allowDuplicate` | serbest | `true` ise mükerrer kaydı kontrolü atlanır |
+
+Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir; alan sessizce yok sayılmaz.
+
+### Cevap — `201`
+
+```json
+{
+  "success": true,
+  "data": {
+    "source": "manual",
+    "sourceId": "6ab1f0c21ae2463211cf1234",
+    "isDraft": false,
+    "invoiceId": "6ab1f0c31ae2463211cf1299",
+    "uuid": "0075cc68-e90b-49c2-8434-0d5f779c72bf",
+    "invoiceNumber": "SAR2026000000123",
+    "channel": "earchive",
+    "integrator": "nilvera",
+    "template": { "key": "68cbdb89113005ecca208627", "title": "GRAM ALTIN", "lineName": "GRAM SAF ALTIN", "material": "gold" },
+    "totals": { "linesTotal": 99988.4, "kdvTotal": 11.6, "allowanceTotal": 0, "payableTotal": 100000 }
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+| Alan | Anlam |
+|---|---|
+| `invoiceId` | Oluşan fatura kaydı — `GET /v1/invoices/{id}` ile okunur. Taslakta `null` |
+| `sourceId` | Banka kaynağında hareket kimliği; serbest faturada oluşan fatura kaydının kimliği |
+| `uuid` / `invoiceNumber` | Entegratör belge kimliği ve fatura numarası |
+| `channel` / `integrator` | Faturanın kesildiği kanal ve entegratör |
+| `totals` | Oluşan fatura kaydının tutar özeti. Taslakta `null` — toplamlar için `preview` kullanılır |
+
+Taslak (`isDraft: true`) isteklerinde HTTP **200** döner: entegratörde taslak oluşur, resmî fatura kesilmez, `invoiceId` ve `totals` boş gelir.
+
+### Hatalar
+
+| Hata | HTTP | Açıklama |
+|---|---|---|
+| Zorunlu alan eksik, bilinmeyen alan, kaynağa uymayan alan | 400 | `VALIDATION_FAILED` |
+| Banka hareketi veya şablon bulunamadı | 404 | `RESOURCE_NOT_FOUND` |
+| Hareket faturalandırılmış / faturalandırma için planlanmış | 409 | `CONFLICT` — `details[0]` mevcut faturanın `uuid` ve `invoiceNumber` bilgisini taşır |
+| Aynı gün, aynı kimlik ve aynı tutar ile fatura kesilmiş | 409 | `CONFLICT` — `details[0].existingId`; bilinçli tekrar için `allowDuplicate: true` |
+| TCKN/VKN doğrulanamadı, kalemler hesaplanamadı, tutar çok düşük, hızlı fatura tanımları eksik | 422 | `VALIDATION_FAILED` |
+| E-belge entegratörü hatası | 502 | `UPSTREAM_ERROR` — `error.details` entegratörün hata listesini taşır |
+
+<Note>
+  Mükerrer koruma kaynak bazlıdır. Banka hareketi bir kez faturalandırılır; ikinci istek `409` alır. Serbest faturada aynı gün + aynı kimlik + aynı tutar kontrol edilir. Ağ hatası nedeniyle cevabı alamadığınız bir istekte, tekrar denemeden önce `GET /v1/invoices` üzerinden faturanın kesilip kesilmediğini doğrulayın.
+</Note>
