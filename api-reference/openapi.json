@@ -1508,6 +1508,86 @@
 						"$ref": "#/components/responses/InternalError"
 					}
 				}
+			},
+			"delete": {
+				"operationId": "cancelInvoiceDraft",
+				"summary": "Taslak fatura iptali",
+				"description": "Taslak faturayı iptal eder. **Yalnız taslak iptal edilir; kesilmiş fatura bu uçtan silinemez** ve denendiğinde `409` döner.\n\n`id` iki değerden biri olabilir:\n\n- **Taslak `uuid`** (`POST /v1/invoices` taslak cevabındaki `uuid`) — entegratördeki taslak silinir.\n- **Kayıt kimliği** (serbest fatura taslağının `sourceId` değeri) — gönderilmemiş yerel fatura kaydı silinir.",
+				"tags": ["Invoices"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Taslak uuid veya gönderilmemiş fatura kaydının kimliği.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Taslak iptal edildi.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": {
+									"type": "string",
+									"format": "uuid"
+								}
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/InvoiceDraftCancelResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"description": "Kesilmiş fatura iptal edilemez.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "Firma e-belge entegrasyonu tanımlı değil.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					},
+					"502": {
+						"description": "E-belge entegratörü hatası.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				}
 			}
 		},
 		"/v1/bank-accounts": {
@@ -5961,6 +6041,46 @@
 					},
 					"data": {
 						"$ref": "#/components/schemas/InvoiceCreateResult"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaBase"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"InvoiceDraftCancelResult": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "İptal edilen taslağın uuid veya kayıt kimliği."
+					},
+					"target": {
+						"type": "string",
+						"enum": ["draft", "record"],
+						"description": "`draft`: entegratördeki taslak, `record`: gönderilmemiş yerel kayıt."
+					},
+					"channel": {
+						"type": "string",
+						"nullable": true,
+						"enum": ["earchive", "einvoice", null],
+						"description": "Taslağın silindiği kanal; yerel kayıt silmede null."
+					},
+					"deleted": {
+						"type": "boolean",
+						"enum": [true]
+					}
+				}
+			},
+			"InvoiceDraftCancelResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"$ref": "#/components/schemas/InvoiceDraftCancelResult"
 					},
 					"meta": {
 						"$ref": "#/components/schemas/MetaBase"
