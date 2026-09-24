@@ -37,7 +37,13 @@ curl 'https://api.sarraf.pro/v1/customers?pageSize=1' \
 ```json
 {
   "success": true,
-  "data": [ ... ],
+  "data": [
+    {
+      "id": "6a9c7e2bf2fb39feccb3480b",
+      "idNo": "1976926558",
+      "nameSurname": "ÖRNEK MÜŞTERİ"
+    }
+  ],
   "meta": {
     "requestId": "c6c85e42-dd06-4cb3-885b-c0ca551ee866",
     "timestamp": "2026-09-05T00:00:00.000Z",
@@ -79,10 +85,22 @@ curl 'https://api.sarraf.pro/v1/customers?pageSize=1' \
 | 401 | `AUTH_INVALID_CREDENTIALS` | Authorization başlığı eksik/yanlış, anahtar pasif veya süresi dolmuş, şirket geçersiz. |
 | 403 | `AUTH_FORBIDDEN` | Anahtar geçerli ancak bu kaynağa yetkisi yok. |
 | 404 | `RESOURCE_NOT_FOUND` | Kayıt veya uç bulunamadı. |
-| 409 | `CONFLICT` | Çakışma — çift kayıt, işlenmiş banka hareketi veya kesinleşmiş belgeyi değiştirme denemesi. `details[0]` mevcut kaydı gösterir. |
+| 409 | `BANK_ACCOUNT_INACTIVE` | Belgeye kaynak gösterilen banka hareketinin hesabı pasif, bulunamıyor veya şirkete ait değil. Hesabı aktifleştirmeden hareketi önizleyemez, taslaklaştıramaz veya işleyemezsiniz. |
+| 409 | `CONFLICT` | Çakışma — çift kayıt, işlenmiş veya başka bir istekçe sahiplenilmiş banka hareketi, eksik yeniden gönderim yetkisi ya da kesinleşmiş belgeyi değiştirme denemesi. `details[0].rule` nedeni belirtir. |
 | 422 | `VALIDATION_FAILED` | İstek biçimsel olarak doğru ama iş kuralı engelliyor — örn. TCKN/VKN doğrulanamadı, kalem hesaplanamadı, belge ayarları eksik. |
 | 500 | `INTERNAL_ERROR` | Beklenmeyen sunucu hatası. |
-| 502 | `UPSTREAM_ERROR` | Dış servis hatası (e-belge gönderimi, belge yükleme). `error.details` dış servisin hata listesini taşır. |
+| 502 | `UPSTREAM_ERROR` | Dış servis isteği kesin biçimde başarısız oldu. `error.details` servis hata bilgisini taşıyabilir. |
+| 502 | `UPSTREAM_RESULT_UNCERTAIN` | Dış servisin sonucu kesinleştirilemedi. Aynı belge isteğini otomatik tekrar göndermeyin. |
+
+Bazı çakışma ve dış servis hatalarında `details[0]` ek işlem bilgisi taşır:
+
+| Alan | Anlam |
+|---|---|
+| `rule` | Çakışma veya doğrulama nedeni |
+| `state` | İşlemin güvenli durumu; belirsiz fatura sonucunda `review_required` |
+| `attemptId` | Gönderim denemesi kimliği; destek ve mutabakat için saklayın |
+| `retryable` | Aynı isteğin otomatik tekrar gönderilip gönderilemeyeceği |
+| `errorCode` | Dış servis veya gönderim katmanının güvenli hata kodu |
 
 <Tip>
   Destek taleplerinde `traceId` paylaşmanız yeterlidir; tüm istek/cevap kayıtları bu kimlikle eşleştirilir.
@@ -145,7 +163,7 @@ Zarf eksikse veya `data` nesne değilse istek `400` ile reddedilir.
 | `201` | Kaynak oluşturuldu (örn. fatura, gider pusulası, müşteri tanı formu, yaptırım sorgu kaydı) |
 | `200` | Kaynak yaratmayan aksiyonlar (örn. banka sorgusu tetikleme, ön hesaplama, taslak iptali) |
 | `400` | Doğrulama hatası — bilinmeyen ve salt-okunur alanlar da bu kapsamda reddedilir |
-| `409` | Çakışma — mükerrer kayıt veya işlenmiş kaynak |
+| `409` | Çakışma — mükerrer/işlenmiş kaynak veya pasif banka hesabı |
 | `422` | İş kuralı engeli |
 | `502` | Dış servis hatası |
 
@@ -155,7 +173,13 @@ Belge iptalleri `DELETE` ile yapılır ve **yalnız kesinleşmemiş belgeyi** ka
 
 ### Mükerrer koruma
 
-Finansal belge oluşturan uçlar mükerrer isteğe karşı korumalıdır. Ağ hatası nedeniyle cevabı alamadığınız bir istekte tekrar denemeden önce ilgili liste ucundan belgenin oluşup oluşmadığını doğrulayın; ikinci istek çakışma durumunda `409` ile reddedilir ve `details[0]` mevcut kaydı gösterir.
+Finansal belge oluşturan uçlar mükerrer isteğe karşı korumalıdır. Ağ hatası nedeniyle cevabı alamadığınız bir istekte tekrar denemeden önce ilgili liste ucundan belgenin oluşup oluşmadığını doğrulayın.
+
+Fatura cevabı `UPSTREAM_RESULT_UNCERTAIN` ise aynı banka hareketini otomatik tekrar göndermeyin. `details[0].retryable` değeri `false` olur. `traceId` ve `details[0].attemptId` değerlerini saklayıp sonucu SarrafPro üzerinden doğrulayın.
+
+<Note>
+  `source: "bankTransaction"` kullanılan fatura ve gider pusulası işlemlerinde bağlı banka hesabı aktif olmalıdır. Bu kontrol önizleme, taslak ve gerçek oluşturma sırasında yeniden yapılır. Salt-okunur banka hareketi geçmişi bu kuraldan etkilenmez.
+</Note>
 
 ## Alan disiplini
 

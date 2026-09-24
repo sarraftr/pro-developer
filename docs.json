@@ -70,13 +70,17 @@
             "openapi": "api-reference/openapi.json",
             "pages": [
               "GET /v1/customers",
+              "POST /v1/customers",
               "GET /v1/customers/{id}",
               "GET /v1/customers/check",
               "GET /v1/customers/verifications",
+              "POST /v1/customers/verifications",
               "GET /v1/customers/verifications/{id}",
               "GET /v1/customers/identity-documents",
+              "POST /v1/customers/identity-documents",
               "GET /v1/customers/identity-documents/{id}",
               "GET /v1/customers/sanction-checks",
+              "POST /v1/customers/sanction-checks",
               "GET /v1/customers/sanction-checks/{id}",
               "GET /v1/customers/events",
               "GET /v1/customers/events/{id}",
@@ -91,7 +95,8 @@
               "GET /v1/bank-accounts",
               "GET /v1/bank-accounts/{id}",
               "GET /v1/bank-transactions",
-              "GET /v1/bank-transactions/{id}"
+              "GET /v1/bank-transactions/{id}",
+              "POST /v1/bank-queries"
             ]
           },
           {
@@ -99,8 +104,11 @@
             "openapi": "api-reference/openapi.json",
             "pages": [
               "GET /v1/invoices",
+              "POST /v1/invoices",
               "GET /v1/invoices/{id}",
-              "GET /v1/invoices/templates"
+              "DELETE /v1/invoices/{id}",
+              "GET /v1/invoices/templates",
+              "POST /v1/invoices/preview"
             ]
           },
           {
@@ -108,8 +116,11 @@
             "openapi": "api-reference/openapi.json",
             "pages": [
               "GET /v1/expenses",
+              "POST /v1/expenses",
               "GET /v1/expenses/{id}",
-              "GET /v1/expenses/templates"
+              "DELETE /v1/expenses/{id}",
+              "GET /v1/expenses/templates",
+              "POST /v1/expenses/preview"
             ]
           }
         ]

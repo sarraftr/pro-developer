@@ -1333,7 +1333,7 @@
 			"post": {
 				"operationId": "createInvoice",
 				"summary": "Fatura oluşturma ve gönderimi",
-				"description": "Fatura oluşturur ve e-belge servisine gönderir. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — faturalandırılmamış bir gelen banka hareketinden. Hareket faturalandırılmış olarak işaretlenir ve panel yayın akışıyla aynı sonucu üretir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest fatura. Tutar, şablon ve ödeme bilgisi istekte verilir.\n\nBaşarılı gönderimde **201** döner ve `invoiceId` ile fatura `GET /v1/invoices/{id}` üzerinden okunabilir. `isDraft: true` gönderildiğinde e-belge servisinde yalnız taslak oluşturulur; resmî fatura kesilmez, `invoiceId` ve `totals` boş döner ve yanıt **200**'dür.\n\nMükerrer gönderim koruması kaynak bazlıdır: banka hareketi zaten faturalandırılmışsa 409 döner; serbest faturada aynı gün + aynı kimlik + aynı tutar için kesilmiş fatura varsa 409 döner ve `allowDuplicate: true` ile bilinçli olarak aşılabilir.",
+				"description": "Fatura oluşturur ve e-belge servisine gönderir. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — aktif bir banka hesabına bağlı, faturalandırılmamış gelen banka hareketinden. Hesap pasifse önizleme, taslak ve gönderim `409 BANK_ACCOUNT_INACTIVE` ile reddedilir. Panel ile API aynı atomik gönderim sahipliğini kullanır; eşzamanlı ikinci istek `409` alır. Daha önce faturalanmış hareket yalnız firma yöneticisinin panelden verdiği tek kullanımlık yetki sonrasında ve istekte `allowReissue: true` açık onayıyla yeniden gönderilebilir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest fatura. Tutar, şablon ve ödeme bilgisi istekte verilir.\n\nBaşarılı gönderimde **201** döner ve `invoiceId` ile fatura `GET /v1/invoices/{id}` üzerinden okunabilir. `isDraft: true` gönderildiğinde e-belge servisinde yalnız taslak oluşturulur; resmî fatura kesilmez, gönderim kilidi veya yeniden gönderim yetkisi tüketilmez, `invoiceId` ve `totals` boş döner ve yanıt **200**'dür.\n\nMükerrer gönderim koruması kaynak bazlıdır: banka hareketi zaten faturalandırılmışsa, gönderiliyorsa veya kontrol bekliyorsa 409 döner; serbest faturada aynı gün + aynı kimlik + aynı tutar için kesilmiş fatura varsa 409 döner ve `allowDuplicate: true` ile bilinçli olarak aşılabilir.",
 				"tags": ["Invoices"],
 				"requestBody": {
 					"required": true,
@@ -1394,7 +1394,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "Mükerrer fatura. Banka hareketi faturalandırılmış veya aynı gün/kimlik/tutar ile fatura kesilmiş (details[0] mevcut kaydı gösterir).",
+						"description": "Çakışma veya mükerrer fatura. Pasif hesaba bağlı banka hareketinde kod `BANK_ACCOUNT_INACTIVE` olur. Hareket başka bir gönderimce sahiplenilmiş, kontrol bekliyor, yeniden gönderim yetkisi/onayı eksik ya da aynı gün/kimlik/tutar ile serbest fatura kesilmiş de olabilir; `error.details[0].rule` nedeni gösterir.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1417,7 +1417,7 @@
 						"$ref": "#/components/responses/InternalError"
 					},
 					"502": {
-						"description": "E-belge servisi hatası. `error.details` servisin döndürdüğü hata listesini taşır.",
+						"description": "E-belge servisi hatası. Sonucun timeout, bağlantı kopması veya 5xx nedeniyle kesinleştirilemediği durumda kod `UPSTREAM_RESULT_UNCERTAIN`, `details[0].state` değeri `review_required` ve `retryable` değeri false olur; aynı banka hareketini otomatik tekrar göndermeyin.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2586,7 +2586,7 @@
 			"post": {
 				"operationId": "createExpense",
 				"summary": "Gider pusulası oluşturma",
-				"description": "Gider pusulası oluşturur. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — resmileştirilmemiş bir **giden** banka hareketinden. Hareket resmileştirilmiş olarak işaretlenir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest gider pusulası.\n\nVarsayılan olarak pusula **kesinleştirilir**: seri-sıra numarası verilir, yazdırma tarihi yazılır ve stok hareketi oluşur. `isDraft: true` gönderildiğinde kayıt oluşur ama kesinleştirilmez; bu kayıt `DELETE /v1/expenses/{id}` ile iptal edilebilir.\n\nSeri ve sıra numarası verilmezse firma ayarından üretilir ve kullanımda olmadığı doğrulanır.",
+				"description": "Gider pusulası oluşturur. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — aktif bir banka hesabına bağlı, resmileştirilmemiş **giden** banka hareketinden. Hesap pasifse önizleme, taslak ve oluşturma `409 BANK_ACCOUNT_INACTIVE` ile reddedilir. Hareket resmileştirilmiş olarak işaretlenir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest gider pusulası.\n\nVarsayılan olarak pusula **kesinleştirilir**: seri-sıra numarası verilir, yazdırma tarihi yazılır ve stok hareketi oluşur. `isDraft: true` gönderildiğinde kayıt oluşur ama kesinleştirilmez; bu kayıt `DELETE /v1/expenses/{id}` ile iptal edilebilir.\n\nSeri ve sıra numarası verilmezse firma ayarından üretilir ve kullanımda olmadığı doğrulanır.",
 				"tags": ["Expenses"],
 				"requestBody": {
 					"required": true,
@@ -2628,7 +2628,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "Banka hareketi resmileştirilmiş veya aynı gün/kimlik/tutar ile pusula oluşturulmuş (details[0] mevcut kaydı gösterir).",
+						"description": "Banka hareketi pasif hesaba bağlıysa kod `BANK_ACCOUNT_INACTIVE` olur. Hareket resmileştirilmiş veya aynı gün/kimlik/tutar ile pusula oluşturulmuş da olabilir (details[0] nedeni gösterir).",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -2861,7 +2861,7 @@
 			"post": {
 				"operationId": "previewInvoice",
 				"summary": "Fatura ön hesaplama",
-				"description": "Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **Hiçbir yan etkisi yoktur:** e-belge servisine gönderim yapılmaz, veritabanına kayıt yazılmaz. Gövde, `POST /v1/invoices` ile aynıdır; yalnız `isDraft` ve `allowDuplicate` alanları kullanılamaz. Dönen `lines` ve `totals`, fatura kesildiğinde `GET /v1/invoices/{id}` içinde görünecek değerlerle aynı hesaba dayanır.",
+				"description": "Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **Hiçbir yan etkisi yoktur:** e-belge servisine gönderim yapılmaz, veritabanına kayıt yazılmaz. `source: \"bankTransaction\"` kullanıldığında hareketin bağlı olduğu banka hesabı aktif olmalıdır; pasif hesap `409 BANK_ACCOUNT_INACTIVE` döndürür. Gövde, `POST /v1/invoices` ile aynıdır; yalnız `isDraft`, `allowDuplicate` ve `allowReissue` alanları kullanılamaz. Dönen `lines` ve `totals`, fatura kesildiğinde `GET /v1/invoices/{id}` içinde görünecek değerlerle aynı hesaba dayanır.",
 				"tags": ["Invoices"],
 				"requestBody": {
 					"required": true,
@@ -2903,7 +2903,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "Banka hareketi faturalandırılmış veya faturalandırma için planlanmış.",
+						"description": "Banka hareketi pasif hesaba bağlı (`BANK_ACCOUNT_INACTIVE`), faturalandırılmış veya faturalandırma için planlanmış.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3025,7 +3025,7 @@
 			"post": {
 				"operationId": "previewExpense",
 				"summary": "Gider pusulası ön hesaplama",
-				"description": "Gider pusulası oluşturulmadan önce kalemi (miktar, birim fiyat, mahiyet) ve müşteri bilgisini hesaplar. **Hiçbir yan etkisi yoktur:** kayıt oluşmaz, seri-sıra numarası tüketilmez. Gövde `POST /v1/expenses` ile aynıdır; yalnız `isDraft` ve `allowDuplicate` kullanılamaz.",
+				"description": "Gider pusulası oluşturulmadan önce kalemi (miktar, birim fiyat, mahiyet) ve müşteri bilgisini hesaplar. **Hiçbir yan etkisi yoktur:** kayıt oluşmaz, seri-sıra numarası tüketilmez. `source: \"bankTransaction\"` kullanıldığında hareketin bağlı olduğu banka hesabı aktif olmalıdır; pasif hesap `409 BANK_ACCOUNT_INACTIVE` döndürür. Gövde `POST /v1/expenses` ile aynıdır; yalnız `isDraft` ve `allowDuplicate` kullanılamaz.",
 				"tags": ["Expenses"],
 				"requestBody": {
 					"required": true,
@@ -3067,7 +3067,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "Banka hareketi resmileştirilmiş.",
+						"description": "Banka hareketi pasif hesaba bağlı (`BANK_ACCOUNT_INACTIVE`) veya resmileştirilmiş.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3683,6 +3683,21 @@
 					},
 					"rule": {
 						"type": "string"
+					},
+					"state": {
+						"type": "string",
+						"nullable": true
+					},
+					"attemptId": {
+						"type": "string",
+						"format": "uuid",
+						"nullable": true
+					},
+					"retryable": {
+						"type": "boolean"
+					},
+					"errorCode": {
+						"type": "string"
 					}
 				}
 			},
@@ -3691,7 +3706,17 @@
 				"properties": {
 					"code": {
 						"type": "string",
-						"enum": ["VALIDATION_FAILED", "AUTH_INVALID_CREDENTIALS", "AUTH_FORBIDDEN", "RESOURCE_NOT_FOUND", "CONFLICT", "UPSTREAM_ERROR", "INTERNAL_ERROR"]
+						"enum": [
+							"VALIDATION_FAILED",
+							"AUTH_INVALID_CREDENTIALS",
+							"AUTH_FORBIDDEN",
+							"RESOURCE_NOT_FOUND",
+							"BANK_ACCOUNT_INACTIVE",
+							"CONFLICT",
+							"UPSTREAM_ERROR",
+							"UPSTREAM_RESULT_UNCERTAIN",
+							"INTERNAL_ERROR"
+						]
 					},
 					"message": {
 						"type": "string"
@@ -6078,6 +6103,11 @@
 								"type": "boolean",
 								"default": false,
 								"description": "true ise serbest faturadaki mükerrer kaydı kontrolü atlanır (yalnız `source: manual`)."
+							},
+							"allowReissue": {
+								"type": "boolean",
+								"default": false,
+								"description": "Daha önce faturalanmış banka hareketinin yeniden gönderimini açıkça onaylar (yalnız `source: bankTransaction`). Tek başına yetki vermez; hareket önce firma yöneticisi tarafından yeniden gönderime açılmış olmalıdır."
 							}
 						},
 						"required": ["source"]

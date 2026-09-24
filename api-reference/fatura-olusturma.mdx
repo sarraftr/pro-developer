@@ -9,8 +9,12 @@ Fatura oluşturma uçları, SarrafPro'nun kendi fatura motorunu dışarıya aça
 
 | Kaynak | Ne zaman kullanılır |
 |---|---|
-| `bankTransaction` | Faturalandırılmamış bir **gelen banka hareketi** faturalandırılır. Hareket, işlenmiş olarak işaretlenir. |
+| `bankTransaction` | Aktif banka hesabına bağlı, faturalandırılmamış bir **gelen banka hareketi** faturalandırılır. Hareket, işlenmiş olarak işaretlenir. |
 | `manual` | Banka hareketine bağlı olmayan **serbest fatura**. Tutar, şablon ve ödeme bilgisi istekte verilir. |
+
+<Note>
+  Banka hareketi geçmişte okunabiliyor olsa bile bağlı hesap pasifse hareket fatura kaynağı olarak kullanılamaz. Önizleme, taslak ve gerçek gönderim `409 BANK_ACCOUNT_INACTIVE` döndürür. Hesabı yeniden aktifleştirdiğinizde işlenmemiş hareket tekrar kullanılabilir.
+</Note>
 
 <Warning>
   `POST /v1/invoices` **resmî mali belge üretir.** Denemelerinizi önce `POST /v1/invoices/preview` (yan etkisiz) ve `isDraft: true` (taslak) ile yapın. API'den yalnız **taslaklar** iptal edilebilir (`DELETE /v1/invoices/{id}`); kesilmiş faturanın iptali panelden yürütülür.
@@ -84,7 +88,7 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
 
 ## `POST /v1/invoices/preview` — ön hesaplama
 
-Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **E-belge servisine gönderim yapılmaz, fatura kaydı oluşmaz.** Gövde `POST /v1/invoices` ile aynıdır; yalnız `isDraft` ve `allowDuplicate` alanları kullanılamaz.
+Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **E-belge servisine gönderim yapılmaz, fatura kaydı oluşmaz.** `source: "bankTransaction"` kullanıyorsanız bağlı banka hesabı aktif olmalıdır. Gövde `POST /v1/invoices` ile aynıdır; yalnız `isDraft`, `allowDuplicate` ve `allowReissue` alanları kullanılamaz.
 
 ```json
 {
@@ -201,6 +205,7 @@ curl -X POST 'https://api.sarraf.pro/v1/invoices' \
 | `customerInfo` | serbest | Faturada kullanılacak müşteri bilgisi: `nameSurname`, `taxOffice`, `address`, `cities`, `states`, `phone`, `email` |
 | `isDraft` | her ikisi | `true` ise e-belge servisinde yalnız taslak oluşturulur; resmî fatura kesilmez |
 | `allowDuplicate` | serbest | `true` ise mükerrer kaydı kontrolü atlanır |
+| `allowReissue` | banka | Daha önce faturalanmış hareketin yeniden gönderimini açıkça onaylar. Tek başına yetki vermez; firma yöneticisinin hareketi panelden yeniden gönderime açmış olması gerekir |
 
 Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir; alan sessizce yok sayılmaz.
 
@@ -234,7 +239,30 @@ Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir; alan ses
 | `pdfUrl` | Faturanın PDF görüntüleme bağlantısı; taslakta ve belge kaynağı uygun değilse `null` |
 | `totals` | Oluşan fatura kaydının tutar özeti. Taslakta `null` — toplamlar için `preview` kullanılır |
 
-Taslak (`isDraft: true`) isteklerinde HTTP **200** döner: belge serviside taslak oluşur, resmî fatura kesilmez, `invoiceId` ve `totals` boş gelir.
+Taslak (`isDraft: true`) isteklerinde HTTP **200** döner: belge servisinde taslak oluşur, resmî fatura kesilmez, `invoiceId` ve `totals` boş gelir. Taslak isteği gerçek gönderim sahipliğini veya tek kullanımlık yeniden gönderim yetkisini tüketmez.
+
+### Yeniden gönderim ve eşzamanlı istekler
+
+Aynı banka hareketini iki istemci aynı anda gönderirse yalnız bir istek hareketi sahiplenir. Diğer istek `409 CONFLICT` alır. `details[0].rule` alanı `SEND_IN_PROGRESS`, `REVIEW_REQUIRED` veya `CLAIM_FAILED` gibi nedeni belirtir.
+
+Daha önce faturalanmış bir hareketi yeniden göndermek için iki koşul birlikte sağlanmalıdır:
+
+1. Firma yöneticisi hareketi SarrafPro panelinden tek kullanımlık yeniden gönderime açmalıdır.
+2. Gerçek gönderim isteğinde `allowReissue: true` gönderilmelidir.
+
+```json
+{
+  "data": {
+    "source": "bankTransaction",
+    "bankTransactionId": "6aaf616b1ae2463211cf050c",
+    "allowReissue": true
+  }
+}
+```
+
+<Warning>
+  `allowReissue` mevcut faturayı iptal etmez. Yeni bir fatura gönderimine açık onay verir. Gerçek gönderim denemesi başladıktan sonra tek kullanımlık yetki, gönderim kesin biçimde başarısız olsa bile tüketilir.
+</Warning>
 
 ### Hatalar
 
@@ -242,14 +270,21 @@ Taslak (`isDraft: true`) isteklerinde HTTP **200** döner: belge serviside tasla
 |---|---|---|
 | Zorunlu alan eksik, bilinmeyen alan, kaynağa uymayan alan | 400 | `VALIDATION_FAILED` |
 | Banka hareketi veya şablon bulunamadı | 404 | `RESOURCE_NOT_FOUND` |
-| Hareket faturalandırılmış / faturalandırma için planlanmış | 409 | `CONFLICT` — `details[0]` mevcut faturanın `uuid` ve `invoiceNumber` bilgisini taşır |
+| Banka hareketinin bağlı hesabı pasif | 409 | `BANK_ACCOUNT_INACTIVE` — önizleme, taslak ve gerçek gönderim reddedilir |
+| Hareket faturalandırılmış, gönderiliyor veya kontrol bekliyor | 409 | `CONFLICT` — `details[0].rule`, `state` ve varsa `attemptId` nedeni gösterir |
+| Yeniden gönderim yetkisi veya açık onayı eksik | 409 | `CONFLICT` — `details[0].rule`, `REISSUE_AUTHORIZATION_REQUIRED` veya `REISSUE_CONFIRMATION_REQUIRED` olur |
 | Aynı gün, aynı kimlik ve aynı tutar ile fatura kesilmiş | 409 | `CONFLICT` — `details[0].existingId`; bilinçli tekrar için `allowDuplicate: true` |
 | TCKN/VKN doğrulanamadı, kalemler hesaplanamadı, tutar çok düşük, hızlı fatura tanımları eksik | 422 | `VALIDATION_FAILED` |
 | E-belge servisi hatası | 502 | `UPSTREAM_ERROR` — `error.details` servisin hata listesini taşır |
+| E-belge sonucu kesinleştirilemedi | 502 | `UPSTREAM_RESULT_UNCERTAIN` — `details[0].state: "review_required"`, `retryable: false` ve `attemptId` döner |
 
 <Note>
-  Mükerrer koruma kaynak bazlıdır. Banka hareketi bir kez faturalandırılır; ikinci istek `409` alır. Serbest faturada aynı gün + aynı kimlik + aynı tutar kontrol edilir. Ağ hatası nedeniyle cevabı alamadığınız bir istekte, tekrar denemeden önce `GET /v1/invoices` üzerinden faturanın kesilip kesilmediğini doğrulayın.
+  Mükerrer koruma kaynak bazlıdır. Banka hareketi bir kez faturalandırılır; eşzamanlı veya ikinci istek `409` alır. Serbest faturada aynı gün + aynı kimlik + aynı tutar kontrol edilir. Ağ hatası nedeniyle cevabı alamadığınız bir istekte, tekrar denemeden önce `GET /v1/invoices` üzerinden faturanın kesilip kesilmediğini doğrulayın.
 </Note>
+
+<Warning>
+  `UPSTREAM_RESULT_UNCERTAIN` cevabında otomatik tekrar denemeyin. Sağlayıcı belgeyi kabul etmiş olabilir. `traceId` ve `details[0].attemptId` ile sonucu SarrafPro üzerinden doğrulayın.
+</Warning>
 
 ## `DELETE /v1/invoices/{id}` — taslak fatura iptali
 

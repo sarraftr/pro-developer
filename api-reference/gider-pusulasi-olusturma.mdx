@@ -9,8 +9,12 @@ Gider pusulası oluşturma uçları, faturadakiyle aynı deseni izler: kalem se�
 
 | Kaynak | Ne zaman kullanılır |
 |---|---|
-| `bankTransaction` | Resmileştirilmemiş bir **giden** banka hareketi için pusula kesilir. Hareket resmileştirilmiş olarak işaretlenir. |
+| `bankTransaction` | Aktif banka hesabına bağlı, resmileştirilmemiş bir **giden** banka hareketi için pusula kesilir. Hareket resmileştirilmiş olarak işaretlenir. |
 | `manual` | Banka hareketine bağlı olmayan **serbest** gider pusulası. |
+
+<Note>
+  Banka hareketi geçmişte okunabiliyor olsa bile bağlı hesap pasifse hareket gider pusulası kaynağı olarak kullanılamaz. Önizleme, taslak ve oluşturma `409 BANK_ACCOUNT_INACTIVE` döndürür. Hesabı yeniden aktifleştirdiğinizde işlenmemiş hareket tekrar kullanılabilir.
+</Note>
 
 <Warning>
   Varsayılan davranış pusulayı **kesinleştirmektir**: seri-sıra numarası tüketilir, yazdırma tarihi yazılır ve stok hareketi oluşur. Kesinleştirilmiş pusula API'den iptal edilemez. Denemelerinizi önce `POST /v1/expenses/preview` (yan etkisiz) ve `isDraft: true` ile yapın.
@@ -77,7 +81,7 @@ curl 'https://api.sarraf.pro/v1/expenses/templates?pageSize=25' \
 
 ## `POST /v1/expenses/preview` — ön hesaplama
 
-Miktar, birim fiyat, mahiyet ve müşteri bilgisini hesaplar. **Kayıt oluşmaz, seri-sıra numarası tüketilmez.** Gövde `POST /v1/expenses` ile aynıdır; `isDraft` ve `allowDuplicate` kullanılamaz.
+Miktar, birim fiyat, mahiyet ve müşteri bilgisini hesaplar. **Kayıt oluşmaz, seri-sıra numarası tüketilmez.** `source: "bankTransaction"` kullanıyorsanız bağlı banka hesabı aktif olmalıdır. Gövde `POST /v1/expenses` ile aynıdır; `isDraft` ve `allowDuplicate` kullanılamaz.
 
 ```json
 {
@@ -219,6 +223,7 @@ Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir.
 |---|---|---|
 | Zorunlu alan eksik, bilinmeyen alan, kaynağa uymayan alan | 400 | `VALIDATION_FAILED` |
 | Banka hareketi veya şablon bulunamadı | 404 | `RESOURCE_NOT_FOUND` |
+| Banka hareketinin bağlı hesabı pasif | 409 | `BANK_ACCOUNT_INACTIVE` — önizleme, taslak ve oluşturma reddedilir |
 | Banka hareketi resmileştirilmiş | 409 | `CONFLICT` |
 | Aynı gün, aynı kimlik ve aynı tutar ile pusula oluşturulmuş | 409 | `CONFLICT` — `details[0].existingId`; bilinçli tekrar için `allowDuplicate: true` |
 | Gider pusulası ayarı eksik/pasif, TCKN/VKN doğrulanamadı, alıcı e-fatura mükellefi, kalem hesaplanamadı | 422 | `VALIDATION_FAILED` |

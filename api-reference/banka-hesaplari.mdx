@@ -65,14 +65,14 @@ Sıralama whitelist'i: `createdDate`, `name`, `balance`, `updatedAt`. Varsayıla
       "bankCode": "0012",
       "iban": "TR000000000000000000000000",
       "currency": "TRY",
-      "type": "vadesiz",
+      "type": "bank",
       "default": true,
       "isApi": true,
       "isDemo": false,
       "balance": 1284530.44,
       "lastCheckAt": "2026-09-20T08:45:00.000Z",
       "lastTransactionAt": "2026-09-20T08:31:00.000Z",
-      "lastCheckStatus": "success",
+      "lastCheckStatus": true,
       "createdDate": "2025-02-04T09:00:00.000Z",
       "updatedAt": "2026-09-20T08:45:00.000Z"
     }
@@ -107,6 +107,10 @@ Liste alanlarına ek olarak:
   Bakiyeleri tazelemek için [Banka sorgusu tetikleme](/api-reference/banka-sorgu-tetikleme) ucunu kullanın; ardından hesap listesini yeniden okuyun.
 </Tip>
 
+<Note>
+  `archived: true` olan bir hesaba bağlı geçmiş hareketleri salt-okunur uçlardan görebilirsiniz. Ancak bu hareketleri `source: "bankTransaction"` ile fatura veya gider pusulası kaynağı olarak kullanamazsınız. Hesap yeniden aktifleştirildiğinde işlenmemiş hareketler tekrar kullanılabilir.
+</Note>
+
 ### Örnek istek
 
 ```bash
@@ -128,9 +132,9 @@ curl 'https://api.sarraf.pro/v1/bank-accounts/6a5f1bb8e2883761a7c61301' \
     "currency": "TRY",
     "balance": 1284530.44,
     "lastCheckAt": "2026-09-20T08:45:00.000Z",
-    "lastCheckStatus": "success",
+    "lastCheckStatus": true,
     "subAccounts": [],
-    "expiryDay": null,
+    "expiryDay": 0,
     "commission": 0,
     "archived": false,
     "updatedAt": "2026-09-20T08:45:00.000Z"

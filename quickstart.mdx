@@ -100,6 +100,10 @@ Bu sayfa sizi sıfırdan ilk başarılı isteğe, ardından ilk belgeyi güvenle
   `isDraft` olmadan gönderilen istek **gerçek mali belge** üretir ve API'den geri alınamaz. Entegrasyonunuzu geliştirirken önce `preview`, sonra taslak akışını kullanın.
 </Warning>
 
+<Warning>
+  Fatura gönderimi `502 UPSTREAM_RESULT_UNCERTAIN` döndürürse aynı isteği otomatik tekrar göndermeyin. Sağlayıcı belgeyi kabul etmiş olabilir. Cevaptaki `traceId` ve `details[0].attemptId` değerlerini saklayıp sonucu SarrafPro üzerinden doğrulayın.
+</Warning>
+
 ## Yazma isteklerinde gövde zarfı
 
 Tüm `POST` uçlarında gövde `data` zarfı içinde gönderilir:
