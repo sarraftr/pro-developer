@@ -3,7 +3,7 @@
 	"info": {
 		"title": "SarrafPro API v1",
 		"version": "1.0.0",
-		"description": "SarrafPro sürümlü dış API yüzeyi. Cari hesaplar, uyum kayıtları, banka hesapları ve hareketleri okunabilir; fatura ve gider pusulası oluşturulup gönderilebilir. Kimlik doğrulama HTTP Basic'tir: base64(apiUserId:secretKey). Tüm yanıtlar sabit zarf formatındadır: başarılı yanıtta success/data/meta, hatalı yanıtta success/error{code,message,details}/traceId. Her yanıtta x-request-id başlığı döner ve traceId ile aynıdır."
+		"description": "SarrafPro sürümlü dış API yüzeyi. Cari hesaplar, uyum kayıtları, banka hesapları ve hareketleri okunabilir; fatura ve gider pusulası oluşturulup gönderilebilir; KMTS etiket/işaret kodları sorgulanabilir. Kimlik doğrulama HTTP Basic'tir: base64(apiUserId:secretKey). Tüm yanıtlar sabit zarf formatındadır: başarılı yanıtta success/data/meta, hatalı yanıtta success/error{code,message,details}/traceId. Her yanıtta x-request-id başlığı döner ve traceId ile aynıdır."
 	},
 	"servers": [
 		{
@@ -41,6 +41,11 @@
 			"name": "Expenses",
 			"description": "Gider pusulası oluşturma, kesinleştirme ve kayıtlar",
 			"x-group": "Giderler"
+		},
+		{
+			"name": "KMTS",
+			"description": "KMTS güvenlikli etiket/işaret doğrulaması ve firma sorgu geçmişi",
+			"x-group": "KMTS"
 		}
 	],
 	"paths": {
@@ -2016,6 +2021,245 @@
 				}
 			}
 		},
+		"/v1/kmts-verifications": {
+			"get": {
+				"operationId": "listKmtsVerifications",
+				"summary": "KMTS sorgu geçmişi",
+				"description": "Şirketin masaüstü, mobil uygulama ve API üzerinden yaptığı KMTS güvenlikli etiket/işaret sorgularını en yeni kayıt önce olacak şekilde listeler. Sonuç, fiziksel ürünün orijinalliği için tek başına garanti değildir.",
+				"tags": ["KMTS"],
+				"parameters": [
+					{
+						"name": "page",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"default": 1
+						}
+					},
+					{
+						"name": "pageSize",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "integer",
+							"minimum": 1,
+							"maximum": 100,
+							"default": 25
+						}
+					},
+					{
+						"name": "sort",
+						"in": "query",
+						"required": false,
+						"description": "Sıralama: createdAt veya updatedAt alanı ve asc/desc yönü. Yön yazılmazsa asc; sort gönderilmezse createdAt:desc kullanılır.",
+						"schema": {
+							"type": "string",
+							"pattern": "^(createdAt|updatedAt)(:(asc|desc))?$"
+						}
+					},
+					{
+						"name": "scannedCode",
+						"in": "query",
+						"required": false,
+						"description": "Normalize edilmiş etiket/işaret numarasıyla tam eşleşme.",
+						"schema": {
+							"type": "string",
+							"maxLength": 64
+						}
+					},
+					{
+						"name": "outcome",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": ["pending", "verified", "not_found", "invalid", "provider_error"]
+						}
+					},
+					{
+						"name": "source",
+						"in": "query",
+						"required": false,
+						"schema": {
+							"type": "string",
+							"enum": ["desktop", "mobile", "api"]
+						}
+					},
+					{
+						"name": "startDate",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; checkedAt >= startDate.",
+						"schema": {
+							"type": "string",
+							"format": "date-time"
+						}
+					},
+					{
+						"name": "endDate",
+						"in": "query",
+						"required": false,
+						"description": "ISO-8601 tarih; checkedAt <= endDate.",
+						"schema": {
+							"type": "string",
+							"format": "date-time"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı liste yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": {
+									"type": "string",
+									"format": "uuid"
+								}
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/KmtsVerificationListResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"403": {
+						"$ref": "#/components/responses/Forbidden"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					}
+				}
+			},
+			"post": {
+				"operationId": "createKmtsVerification",
+				"summary": "KMTS etiketi veya işareti sorgulama",
+				"description": "Etiket/işaret numarasını KMTS servisinde sorgular ve sonucu şirket geçmişine kaydeder. Otomatik tekrar yapılmaz. Aktör başına dakikada 10, şirket toplamında dakikada 60 sorgu sınırı vardır.",
+				"tags": ["KMTS"],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/KmtsVerificationRequest"
+							}
+						}
+					}
+				},
+				"responses": {
+					"201": {
+						"description": "KMTS sorgusu tamamlandı ve geçmiş kaydı oluşturuldu.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": {
+									"type": "string",
+									"format": "uuid"
+								}
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/KmtsVerificationResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"403": {
+						"$ref": "#/components/responses/Forbidden"
+					},
+					"429": {
+						"$ref": "#/components/responses/KmtsRateLimited"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					},
+					"502": {
+						"$ref": "#/components/responses/KmtsUpstreamError"
+					},
+					"503": {
+						"$ref": "#/components/responses/KmtsRateLimitUnavailable"
+					},
+					"504": {
+						"$ref": "#/components/responses/KmtsUpstreamTimeout"
+					}
+				}
+			}
+		},
+		"/v1/kmts-verifications/{id}": {
+			"get": {
+				"operationId": "getKmtsVerification",
+				"summary": "KMTS sorgu kaydı detayı",
+				"description": "Şirkete ait tek KMTS sorgu kaydının izin verilen ürün ve sonuç alanlarını döner.",
+				"tags": ["KMTS"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "KMTS sorgu kaydı kimliği.",
+						"schema": {
+							"type": "string",
+							"pattern": "^[a-fA-F0-9]{24}$"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Başarılı detay yanıtı.",
+						"headers": {
+							"x-request-id": {
+								"description": "İstek kimliği; yanıt gövdesindeki meta.requestId ile aynıdır.",
+								"schema": {
+									"type": "string",
+									"format": "uuid"
+								}
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/KmtsVerificationResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"403": {
+						"$ref": "#/components/responses/Forbidden"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					}
+				}
+			}
+		},
 		"/v1/customers/events": {
 			"get": {
 				"operationId": "listCustomerEvents",
@@ -3693,6 +3937,14 @@
 						"format": "uuid",
 						"nullable": true
 					},
+					"verificationId": {
+						"type": "string",
+						"nullable": true
+					},
+					"retryAfter": {
+						"type": "integer",
+						"nullable": true
+					},
 					"retryable": {
 						"type": "boolean"
 					},
@@ -3715,6 +3967,13 @@
 							"CONFLICT",
 							"UPSTREAM_ERROR",
 							"UPSTREAM_RESULT_UNCERTAIN",
+							"KMTS_RATE_LIMITED",
+							"KMTS_RATE_LIMIT_UNAVAILABLE",
+							"KMTS_PROVIDER_TIMEOUT",
+							"KMTS_PROVIDER_UNAVAILABLE",
+							"KMTS_PROVIDER_RATE_LIMITED",
+							"KMTS_PROVIDER_RESPONSE_INVALID",
+							"KMTS_HISTORY_WRITE_FAILED",
 							"INTERNAL_ERROR"
 						]
 					},
@@ -6769,6 +7028,171 @@
 				},
 				"required": ["success", "data", "meta"]
 			},
+			"KmtsVerificationRequest": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "object",
+						"properties": {
+							"scannedCode": {
+								"type": "string",
+								"minLength": 1,
+								"maxLength": 64,
+								"description": "KMTS güvenlikli etiket veya işaret numarası. Başındaki ve sonundaki boşluklar temizlenir, büyük harfe çevrilir."
+							}
+						},
+						"required": ["scannedCode"],
+						"additionalProperties": false
+					}
+				},
+				"required": ["data"]
+			},
+			"KmtsVerification": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"pattern": "^[a-fA-F0-9]{24}$"
+					},
+					"scannedCode": {
+						"type": "string"
+					},
+					"outcome": {
+						"type": "string",
+						"enum": ["pending", "verified", "not_found", "invalid", "provider_error"]
+					},
+					"isVerified": {
+						"type": "boolean",
+						"nullable": true
+					},
+					"status": {
+						"type": "string",
+						"nullable": true
+					},
+					"statusDescription": {
+						"type": "string",
+						"nullable": true
+					},
+					"statusTitleDescription": {
+						"type": "string",
+						"nullable": true
+					},
+					"activationDate": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"scanVerificationId": {
+						"type": "string",
+						"nullable": true
+					},
+					"refineryName": {
+						"type": "string",
+						"nullable": true
+					},
+					"markingDate": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"productName": {
+						"type": "string",
+						"nullable": true
+					},
+					"millesimalFineness": {
+						"type": "string",
+						"nullable": true
+					},
+					"weightUnit": {
+						"type": "string",
+						"nullable": true
+					},
+					"metal": {
+						"type": "string",
+						"nullable": true
+					},
+					"weight": {
+						"type": "number",
+						"nullable": true
+					},
+					"packagePrefix": {
+						"type": "string",
+						"nullable": true
+					},
+					"method": {
+						"type": "string",
+						"nullable": true
+					},
+					"methodDescription": {
+						"type": "string",
+						"nullable": true
+					},
+					"source": {
+						"type": "string",
+						"enum": ["desktop", "mobile", "api"]
+					},
+					"checkedAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"completedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"durationMs": {
+						"type": "integer",
+						"nullable": true
+					},
+					"errorCode": {
+						"type": "string",
+						"nullable": true
+					},
+					"errorMessage": {
+						"type": "string",
+						"nullable": true
+					},
+					"retryable": {
+						"type": "boolean"
+					}
+				},
+				"required": ["id", "scannedCode", "outcome", "source", "checkedAt", "retryable"]
+			},
+			"KmtsVerificationResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"$ref": "#/components/schemas/KmtsVerification"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaBase"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"KmtsVerificationListResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"type": "array",
+						"items": {
+							"$ref": "#/components/schemas/KmtsVerification"
+						}
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaList"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
 			"ExpenseDeleteResult": {
 				"type": "object",
 				"properties": {
@@ -6811,6 +7235,65 @@
 			},
 			"Unauthorized": {
 				"description": "Kimlik doğrulama başarısız.",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/ErrorResponse"
+						}
+					}
+				}
+			},
+			"Forbidden": {
+				"description": "Bu kaynak şirket için etkin değil veya işlem yetkisi bulunmuyor.",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/ErrorResponse"
+						}
+					}
+				}
+			},
+			"KmtsRateLimited": {
+				"description": "KMTS sorgu limiti aşıldı. Retry-After başlığı yeniden denenebilecek süreyi saniye olarak verir.",
+				"headers": {
+					"Retry-After": {
+						"description": "Yeni sorgu yapılmadan önce beklenecek saniye.",
+						"schema": {
+							"type": "integer",
+							"minimum": 1
+						}
+					}
+				},
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/ErrorResponse"
+						}
+					}
+				}
+			},
+			"KmtsRateLimitUnavailable": {
+				"description": "KMTS sorgu kotası doğrulanamadı veya geçmiş kaydı tamamlanamadı. Kota hatasında sağlayıcıya istek gönderilmez.",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/ErrorResponse"
+						}
+					}
+				}
+			},
+			"KmtsUpstreamError": {
+				"description": "KMTS servisine ulaşılamadı veya servis geçerli yanıt vermedi. Hata ayrıntısındaki verificationId ile başarısız geçmiş kaydı okunabilir.",
+				"content": {
+					"application/json": {
+						"schema": {
+							"$ref": "#/components/schemas/ErrorResponse"
+						}
+					}
+				}
+			},
+			"KmtsUpstreamTimeout": {
+				"description": "KMTS servisi 10 saniye içinde yanıt vermedi. Başarısız geçmiş kaydı oluşturulur; otomatik tekrar yapılmaz.",
 				"content": {
 					"application/json": {
 						"schema": {

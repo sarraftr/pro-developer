@@ -1,0 +1,181 @@
+---
+title: "KMTS doğrulamaları"
+description: "Güvenlikli etiket veya işaret numarasını sorgulayın ve şirket geçmişini okuyun"
+---
+
+KMTS doğrulamalarıyla güvenlikli etiket veya işaret numarasının KMTS kaydını sorgulayabilirsiniz. API, SarrafPro masaüstü ve mobil uygulama sorguları aynı şirket geçmişinde görünür. Ortak kimlik doğrulama ve yanıt zarfı için [Genel Bakış](/api-reference/genel-bakis) sayfasını inceleyin.
+
+<Warning>
+  `verified` sonucu kodun KMTS kaydında bulunduğunu gösterir. Fiziksel ürünün orijinalliğini tek başına garanti etmez.
+</Warning>
+
+## `POST /v1/kmts-verifications` — kod sorgulama
+
+Etiket veya işaret numarasını sorgular ve sonucu geçmişe kaydeder. Kod başındaki ve sonundaki boşluklardan temizlenir ve büyük harfe çevrilir.
+
+### Örnek istek
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/kmts-verifications' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/json' \
+  -d '{"data":{"scannedCode":"RG00021951"}}'
+```
+
+### İstek gövdesi
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `data.scannedCode` | string | Zorunlu; en fazla 64 karakter |
+
+### Cevap — `201`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6b2cf708d57f38fa47a0a221",
+    "scannedCode": "RG00021951",
+    "outcome": "verified",
+    "isVerified": true,
+    "status": "Activated",
+    "statusDescription": "KMTS Kaydı Bulundu",
+    "statusTitleDescription": "KMTS Kaydı Bulundu",
+    "activationDate": "2026-09-17T10:00:00.000Z",
+    "scanVerificationId": "980341",
+    "refineryName": "Örnek Rafineri",
+    "markingDate": "2026-09-17T09:30:00.000Z",
+    "productName": "Basılı Kıymetli Maden",
+    "millesimalFineness": "995.00",
+    "weightUnit": "Gr",
+    "metal": "AU",
+    "weight": 1,
+    "packagePrefix": null,
+    "method": "Basic",
+    "methodDescription": "Etiket numarası ile sorgulama",
+    "source": "api",
+    "checkedAt": "2026-09-24T10:00:00.000Z",
+    "completedAt": "2026-09-24T10:00:00.420Z",
+    "durationMs": 420,
+    "errorCode": null,
+    "errorMessage": null,
+    "retryable": false
+  },
+  "meta": {
+    "requestId": "e946b72e-663c-48de-a729-bdc799fdb9e8",
+    "timestamp": "2026-09-24T10:00:00.425Z"
+  }
+}
+```
+
+`outcome` alanı aşağıdaki değerlerden biridir:
+
+| Değer | Anlam |
+|---|---|
+| `verified` | Kod KMTS kaydında bulundu |
+| `not_found` | Kod için KMTS kaydı bulunamadı |
+| `invalid` | Kod KMTS tarafından geçersiz kabul edildi |
+| `provider_error` | KMTS servisi sorguyu tamamlayamadı |
+| `pending` | Başlatılan sorgu henüz tamamlanmadı |
+
+`verified`, `not_found` ve `invalid` sonuçlarının tamamı geçmiş kaydı oluşturduğu için HTTP `201` döner.
+
+<Note>
+  Aktör başına dakikada 10, şirket toplamında dakikada 60 sorgu yapılabilir. SarrafPro otomatik tekrar göndermez.
+</Note>
+
+## `GET /v1/kmts-verifications` — sorgu geçmişi
+
+Şirketinizin masaüstü, mobil uygulama ve API sorgularını sayfalı olarak listeler. Varsayılan sıralama `createdAt:desc` değeridir.
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/kmts-verifications?outcome=verified&page=1&pageSize=25' \
+  -u 'apiUserId:secretKey'
+```
+
+### Sorgu parametreleri
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `page` | integer | Sayfa numarası; varsayılan `1` |
+| `pageSize` | integer | Sayfa başına kayıt; `1-100`, varsayılan `25` |
+| `sort` | string | `createdAt` veya `updatedAt`; yön yazılmazsa `asc`, parametre gönderilmezse `createdAt:desc` |
+| `scannedCode` | string | Etiket/işaret numarasıyla tam eşleşme |
+| `outcome` | string | Sonuç durumuyla filtreleme |
+| `source` | string | `desktop`, `mobile` veya `api` |
+| `startDate` | date-time | Sorgu zamanı alt sınırı |
+| `endDate` | date-time | Sorgu zamanı üst sınırı |
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "6b2cf708d57f38fa47a0a221",
+      "scannedCode": "RG00021951",
+      "outcome": "verified",
+      "isVerified": true,
+      "status": "Activated",
+      "statusDescription": "KMTS Kaydı Bulundu",
+      "refineryName": "Örnek Rafineri",
+      "productName": "Basılı Kıymetli Maden",
+      "millesimalFineness": "995.00",
+      "weightUnit": "Gr",
+      "metal": "AU",
+      "weight": 1,
+      "source": "api",
+      "checkedAt": "2026-09-24T10:00:00.000Z",
+      "completedAt": "2026-09-24T10:00:00.420Z",
+      "durationMs": 420,
+      "errorCode": null,
+      "errorMessage": null,
+      "retryable": false
+    }
+  ],
+  "meta": {
+    "requestId": "e946b72e-663c-48de-a729-bdc799fdb9e8",
+    "timestamp": "2026-09-24T10:01:00.000Z",
+    "page": 1,
+    "limit": 25,
+    "total": 1,
+    "pages": 1
+  }
+}
+```
+
+## `GET /v1/kmts-verifications/{id}` — sorgu detayı
+
+Şirketinize ait tek sorgunun izin verilen KMTS sonuç alanlarını döner.
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/kmts-verifications/6b2cf708d57f38fa47a0a221' \
+  -u 'apiUserId:secretKey'
+```
+
+Başarılı cevap `POST` yanıtındaki aynı `data` yapısını kullanır.
+
+## Hatalar
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| `400` | `VALIDATION_FAILED` | Kod, filtre veya kayıt kimliği geçersiz |
+| `401` | `AUTH_INVALID_CREDENTIALS` | API kimlik bilgileri geçersiz |
+| `403` | `AUTH_FORBIDDEN` | KMTS erişimi şirket için etkin değil |
+| `404` | `RESOURCE_NOT_FOUND` | Sorgu kaydı bulunamadı |
+| `429` | `KMTS_RATE_LIMITED` | Aktör veya şirket sorgu limiti aşıldı |
+| `500` | `INTERNAL_ERROR` | Beklenmeyen sunucu hatası |
+| `502` | `KMTS_PROVIDER_UNAVAILABLE`, `KMTS_PROVIDER_RATE_LIMITED` veya `KMTS_PROVIDER_RESPONSE_INVALID` | KMTS sorgusu teknik nedenle tamamlanamadı |
+| `503` | `KMTS_RATE_LIMIT_UNAVAILABLE` veya `KMTS_HISTORY_WRITE_FAILED` | Sorgu kotası doğrulanamadı ya da geçmiş kaydı tamamlanamadı |
+| `504` | `KMTS_PROVIDER_TIMEOUT` | KMTS servisi 10 saniye içinde yanıt vermedi |
+
+Geçmiş kaydı oluşan teknik hata cevaplarında `error.details[0].verificationId` ilgili denemeyi gösterir. `retryable` alanı yalnız istemcinin daha sonra yeni bir kullanıcı kararıyla tekrar deneyebileceğini belirtir; otomatik tekrar göndermeyin.
+
+<Note>
+  KMTS kullanım koşullarını ve güncel açıklamaları [resmî sorgulama ekranından](https://www.kmts.gov.tr/sorgulama) takip edin.
+</Note>

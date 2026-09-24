@@ -59,6 +59,12 @@
               "api-reference/giderler",
               "api-reference/gider-pusulasi-olusturma"
             ]
+          },
+          {
+            "group": "KMTS",
+            "pages": [
+              "api-reference/kmts-dogrulamalari"
+            ]
           }
         ]
       },
@@ -122,6 +128,15 @@
               "GET /v1/expenses/templates",
               "POST /v1/expenses/preview"
             ]
+          },
+          {
+            "group": "KMTS",
+            "openapi": "api-reference/openapi.json",
+            "pages": [
+              "GET /v1/kmts-verifications",
+              "POST /v1/kmts-verifications",
+              "GET /v1/kmts-verifications/{id}"
+            ]
           }
         ]
       }
@@ -184,7 +199,7 @@
   "fonts": {
     "family": "Plus Jakarta Sans"
   },
-  "description": "SarrafPro Dış API (v1) geliştirici dokümantasyonu — cari hesaplar, uyum, banka hareketleri, fatura ve gider pusulası uçları.",
+  "description": "SarrafPro Dış API (v1) geliştirici dokümantasyonu — cari hesaplar, uyum, banka hareketleri, fatura, gider pusulası ve KMTS uçları.",
   "api": {
     "playground": {
       "display": "interactive"
