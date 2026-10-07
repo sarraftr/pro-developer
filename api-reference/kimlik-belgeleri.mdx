@@ -124,7 +124,11 @@ curl 'https://api.sarraf.pro/v1/customers/identity-documents/6aa6aaf0da99cd3fa91
 
 ## `POST /v1/customers/identity-documents` — belge görseli yükleme
 
-Müşteri tanı (accord) akışı için kimlik veya pasaport görseli yükler. Görsel, belge servisine güvenle taşınır ve belge kaydı oluşur.
+Bağımsız kimlik veya pasaport belge kaydı oluşturur. Görsel, belge servisine güvenle taşınır ve belge kaydı oluşur.
+
+<Warning>
+  E-ticaret Müşteri Tanı Formu akışında bu ucu kullanmayın. Görseli doğrudan forma bağlamak için [`PUT /v1/customers/verifications/{id}/identity-documents/{side}`](/api-reference/musteri-tani-formlari) ucunu kullanın. Böylece görsel PDF'ye ve panel onayına aynı form kaydı üzerinden taşınır.
+</Warning>
 
 ### Örnek istek
 
@@ -157,7 +161,7 @@ curl -X POST 'https://api.sarraf.pro/v1/customers/identity-documents' \
 | `fileName` | string | **Zorunlu** |
 | `mimeType` | string | `image/jpeg` veya `image/png` |
 | `content` | string | **Zorunlu** — base64 görsel içeriği, en fazla 8 MiB |
-| `verificationId` | string | Opsiyonel — kaydın ilişkilendirileceği müşteri tanı formu; şirketinize ait olmalı |
+| `verificationId` | string | Eski entegrasyonlarla uyumluluk için opsiyonel ilişki kimliği; forma bağlı MTF yükleme ucunun yerine geçmez |
 
 ### Cevap — `201`
 
@@ -185,4 +189,3 @@ Yalnız belge metası döner; görsel içerik veya görsel adresi (`imageUrl`) *
 | Zorunlu alan eksik / tür hatası / boyut aşımı | 400 | `VALIDATION_FAILED` |
 | `verificationId` bulunamadı | 404 | `RESOURCE_NOT_FOUND` |
 | Belge yükleme servisi hatası | 502 | `UPSTREAM_ERROR` |
-

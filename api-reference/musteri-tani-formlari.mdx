@@ -5,6 +5,12 @@ description: "KYC / müşteri tanı formu kayıtları — onay, imza ve MASAK du
 
 Müşteri tanı formları (Accord doğrulama kayıtları), müşterinin kimlik ve KYC bilgilerinin toplandığı resmi kayıtlardır. Bireysel ve kurumsal (temsilci/ortak/gerçek faydalanıcı + kurumsal belgeler) akışlar desteklenir.
 
+E-ticaret entegrasyonunda sırasıyla formu oluşturun, kimlik görsellerini yükleyin, imzasız PDF'yi alın ve müşteriye imzalattığınız nihai PDF'yi aynı forma geri yükleyin. Bu işlemleri kendi sunucunuzdan yapın. API kullanıcı bilgilerini tarayıcıya veya mobil istemciye vermeyin.
+
+<Note>
+  İmzalı PDF yüklemek formu onaylamaz. `isSigned` ve `isApproval` birbirinden bağımsızdır. Panel onayı mevcut iş akışında ayrıca tamamlanır.
+</Note>
+
 ## `POST /v1/customers/verifications` — form oluşturma
 
 Müşteri tanı (KYC) formu açar; kayıt onay bekleyen doğar (`isApproval: false`) ve onay akışı panel tarafında tamamlanır. API üzerinden doğrudan onaylı müşteri yaratılamaz. Aynı `idNo` ile onay bekleyen form varsa `409 CONFLICT` döner (`details[0].existingId` mevcut formu gösterir).
@@ -48,7 +54,7 @@ Temel alan kuralları [hızlı cari ekleme](/api-reference/musteriler) ile aynı
 | `companyDocuments` | object | Yalnız `idType=company` — `taxDoc`, `activeDoc`, `registryDoc`, `signDoc` |
 
 <Note>
-  Kurumsal belgeler Accord akışıyla aynı doğrulamadan geçer: PDF/JPEG/PNG, belge başına en fazla 2 MiB, dosya uzantısı ve içerik imzası MIME türüyle eşleşmeli. İçerik güvenli geçici depoya yazılır ve panel onayında kimlik servisine taşınır. Kimlik/pasaport görselleri için [Kimlik belgeleri](/api-reference/kimlik-belgeleri) ucu kullanılır.
+  Kurumsal belgeler Accord akışıyla aynı doğrulamadan geçer: PDF/JPEG/PNG, belge başına en fazla 2 MiB, dosya uzantısı ve içerik imzası MIME türüyle eşleşmeli. İçerik güvenli geçici depoya yazılır ve panel onayında kimlik servisine taşınır. Bu forma ait kimlik veya pasaport görsellerini aşağıdaki forma bağlı yükleme ucuyla gönderin.
 </Note>
 
 ### Cevap — `201`
@@ -129,6 +135,7 @@ Liste alanlarına ek olarak:
 | `customerRelation` | Kurumsal kayıtta temsilci/ortak/gerçek faydalanıcı (`representative`, `shareholder`, `beneficialOwner`) |
 | `companyDocuments` | Kurumsal belgelerin **metası** — `fileName`, `mimeType`, `size` (içerik dönmez) |
 | `requirementsSnapshot` | Formun doldurulduğu andaki zorunluluk ayarlarının anlık görüntüsü |
+| `signedDocument` | İmzalı PDF'nin metası — `id`, `fileName`, `mimeType`, `size`, `sha256`, `uploadedAt`; içerik dönmez |
 | `isDeleted` | Formun silinme durumu (detayda görünür) |
 
 <Warning>
@@ -152,7 +159,15 @@ curl 'https://api.sarraf.pro/v1/customers/verifications/6aa1c2f0da99cd3fa911edc7
     "idNo": "1976926558",
     "nameSurname": "ÖRNEK MÜŞTERİ",
     "isApproval": false,
-    "isSigned": false,
+    "isSigned": true,
+    "signedDocument": {
+      "id": "6ab2d3e4fa99cd3fa911edc8",
+      "fileName": "MUSTERI-TANI-FORMU-6aa1c2f0da99cd3fa911edc7-IMZALI.pdf",
+      "mimeType": "application/pdf",
+      "size": 284155,
+      "sha256": "03d98de99d54d12b9f67ab1f265f1a243b16c60d04fd1b0e971b71bda9f3fa33",
+      "uploadedAt": "2026-10-07T13:24:00.000Z"
+    },
     "birthday": "1985-06-14",
     "taxOffice": "BAHÇELİEVLER",
     "address": "ÖRNEK MAH. ÖRNEK SOK. NO:1",
@@ -167,3 +182,175 @@ curl 'https://api.sarraf.pro/v1/customers/verifications/6aa1c2f0da99cd3fa911edc7
   }
 }
 ```
+
+## `PUT /v1/customers/verifications/{id}/identity-documents/{side}` — kimlik görseli yükleme
+
+Kimlik veya pasaport görselini doğrudan müşteri tanı formuna bağlar. Bu uçta JSON ve `data` zarfı kullanmayın. Dosyayı ham istek gövdesi olarak gönderin.
+
+### Örnek istek
+
+```bash
+curl -X PUT 'https://api.sarraf.pro/v1/customers/verifications/6aa1c2f0da99cd3fa911edc7/identity-documents/front' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: image/jpeg' \
+  --data-binary '@kimlik-on.jpg'
+```
+
+### Yol parametreleri ve gövde
+
+| Alan | Kural |
+|---|---|
+| `id` | Şirketinize ait, onay bekleyen ve silinmemiş formun kimliği |
+| `side` | `front` veya `rear`; pasaportta yalnız `front` |
+| `Content-Type` | `image/jpeg` veya `image/png` |
+| Gövde | Ham JPEG/PNG dosya baytları; base64 veya JSON değildir |
+
+Aynı tarafa aynı dosyayı tekrar gönderirseniz kayıt değişmez. Farklı bir dosya gönderirseniz form imzalanmadan ve onaylanmadan önce o taraf güvenli biçimde değiştirilir. Ön ve arka görsellerin toplam boyutu sunucu sınırını aşarsa `413 PAYLOAD_TOO_LARGE` alırsınız.
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "verificationId": "6aa1c2f0da99cd3fa911edc7",
+    "type": "front",
+    "fileName": "KIMLIK-ON-6aa1c2f0da99cd3fa911edc7.jpg",
+    "mimeType": "image/jpeg",
+    "size": 384211,
+    "sha256": "956b3c76a4d5f7f5eb7a7ad96f09db0f66874c302e84751887e0e7f1d48263d7",
+    "updatedAt": "2026-10-07T13:20:00.000Z"
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+### Hatalar
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| `400` | `VALIDATION_FAILED` | Geçersiz form kimliği, taraf veya dosya imzası |
+| `404` | `RESOURCE_NOT_FOUND` | Form bulunamadı veya başka şirkete ait |
+| `409` | `MTF_FINALIZED`, `MTF_SIGNED`, `MTF_CHANGED` | Form artık değiştirilemez veya eşzamanlı değişti |
+| `413` | `PAYLOAD_TOO_LARGE` | Dosya/toplam görsel sınırı aşıldı |
+| `415` | `UNSUPPORTED_MEDIA_TYPE` | JPEG/PNG dışında içerik gönderildi |
+
+## `GET /v1/customers/verifications/{id}/pdf` — imzasız PDF üretme
+
+Bekleyen veya onaylanmış formun PDF çıktısını döner. Başarılı cevap JSON değildir; doğrudan `application/pdf` dosyasıdır.
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/verifications/6aa1c2f0da99cd3fa911edc7/pdf' \
+  -u 'apiUserId:secretKey' \
+  --dump-header mtf-headers.txt \
+  --output musteri-tani-formu.pdf
+```
+
+Yanıtta `ETag` başlığı bulunur:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/pdf
+Content-Disposition: inline; filename="MUSTERI-TANI-FORMU-6aa1c2f0da99cd3fa911edc7.pdf"
+ETag: "mtf-8e9f..."
+```
+
+`ETag` değerini PDF ile birlikte saklayın. İmzalı PDF'yi yüklerken bu değeri değiştirmeden `If-Match` başlığında gönderin. Form veya kimlik görselleri PDF alındıktan sonra değişirse eski sürüm kabul edilmez.
+
+### Hatalar
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| `404` | `RESOURCE_NOT_FOUND` | Form bulunamadı |
+| `409` | `MTF_ONLY_INVOICE` | Yalnız fatura kaydından MTF üretilemez |
+| `424` | `MTF_DATA_UNAVAILABLE` | Forma bağlı güncel veri kullanılamıyor |
+| `502` / `503` / `504` | `MTF_PRINT_*` | PDF servisi çıktı üretemedi, yoğun veya zaman aşımına uğradı |
+
+## `PUT /v1/customers/verifications/{id}/signed-pdf` — imzalı PDF yükleme
+
+Müşteriye imzalattığınız nihai PDF'yi forma bağlar. İstek gövdesi ham PDF dosyasıdır; JSON ve `data` zarfı kullanmayın. Dosya en fazla 32 MiB olabilir.
+
+### Örnek istek
+
+```bash
+curl -X PUT 'https://api.sarraf.pro/v1/customers/verifications/6aa1c2f0da99cd3fa911edc7/signed-pdf' \
+  -u 'apiUserId:secretKey' \
+  -H 'Content-Type: application/pdf' \
+  -H 'If-Match: "mtf-8e9f..."' \
+  --data-binary '@musteri-tani-formu-imzali.pdf'
+```
+
+API, PDF dosya imzasını ve form sürümünü doğrular. Dosyayı güvenli belge deposuna yazar. Formun `isSigned` değerini `true` yapar. `isApproval` değerini değiştirmez.
+
+Form henüz onay bekliyorsa yüklenen imzalı belge de panel onayı tamamlanana kadar bekleyen belge olarak tutulur.
+
+<Warning>
+  Bu uç PDF içindeki ıslak imzayı veya nitelikli elektronik imza sertifikasını kriptografik olarak doğrulamaz. Entegrasyonu yapan taraf, yüklediği dosyanın müşteri tarafından imzalanmış nihai belge olduğunu beyan eder.
+</Warning>
+
+İmzalı formun alanları ve kimlik görselleri sonradan değiştirilemez. Düzeltme gerekiyorsa güncel bilgilerle yeni bir form ve yeni bir imzalı PDF oluşturun. Aynı PDF ile güvenli tekrar çağrısı `200` döner. Farklı bir PDF mevcut belgenin üzerine yazılmaz.
+
+### Cevap — `201`
+
+```json
+{
+  "success": true,
+  "data": {
+    "verificationId": "6aa1c2f0da99cd3fa911edc7",
+    "isSigned": true,
+    "signedDocument": {
+      "id": "6ab2d3e4fa99cd3fa911edc8",
+      "fileName": "MUSTERI-TANI-FORMU-6aa1c2f0da99cd3fa911edc7-IMZALI.pdf",
+      "mimeType": "application/pdf",
+      "size": 284155,
+      "sha256": "03d98de99d54d12b9f67ab1f265f1a243b16c60d04fd1b0e971b71bda9f3fa33",
+      "uploadedAt": "2026-10-07T13:24:00.000Z"
+    }
+  },
+  "meta": { "requestId": "...", "timestamp": "..." }
+}
+```
+
+### Hatalar
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| `404` | `RESOURCE_NOT_FOUND` | Form bulunamadı |
+| `409` | `MTF_ALREADY_SIGNED`, `MTF_CHANGED` | Farklı imzalı belge zaten var veya form eşzamanlı değişti |
+| `412` | `MTF_VERSION_MISMATCH` | `If-Match`, güncel form sürümüyle eşleşmiyor; PDF'yi yeniden alın |
+| `413` | `PAYLOAD_TOO_LARGE` | PDF 32 MiB sınırını aşıyor |
+| `415` | `UNSUPPORTED_MEDIA_TYPE` | İstek `application/pdf` değil |
+| `424` | `MTF_DATA_UNAVAILABLE` | Forma bağlı güncel PDF kaynağı kullanılamıyor |
+| `428` | `PRECONDITION_REQUIRED` | `If-Match` başlığı gönderilmedi |
+| `502` | `UPSTREAM_ERROR` | Belge servisine yükleme başarısız |
+
+## `GET /v1/customers/verifications/{id}/signed-pdf` — imzalı PDF indirme
+
+Forma bağlı imzalı PDF'yi indirir veya tarayıcı içinde gösterir. Dahili dosya adresi ve erişim anahtarı dönmez.
+
+### Örnek istek
+
+```bash
+curl 'https://api.sarraf.pro/v1/customers/verifications/6aa1c2f0da99cd3fa911edc7/signed-pdf?download=true' \
+  -u 'apiUserId:secretKey' \
+  --output musteri-tani-formu-imzali.pdf
+```
+
+| Parametre | Tür | Açıklama |
+|---|---|---|
+| `download` | boolean | `true` ise dosya eki; varsayılan olarak tarayıcı içinde gösterim |
+
+### Cevap — `200`
+
+Başarılı cevap JSON değil, doğrudan `application/pdf` dosyasıdır. `download=true` gönderildiğinde `Content-Disposition: attachment`; aksi durumda `inline` döner.
+
+### Hatalar
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| `400` | `VALIDATION_FAILED` | Form kimliği veya `download` değeri geçersiz |
+| `404` | `RESOURCE_NOT_FOUND` / `SIGNED_PDF_NOT_FOUND` | Form veya forma bağlı imzalı PDF bulunamadı |
+| `409` | `MTF_ONLY_INVOICE` | Yalnız fatura kaydına imzalı MTF bağlanamaz |
+| `424` | `SIGNED_PDF_UNAVAILABLE` | Güvenli depodaki belge alınamadı veya doğrulanamadı |

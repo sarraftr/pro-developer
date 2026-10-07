@@ -830,7 +830,7 @@
 			"post": {
 				"operationId": "createCustomerVerification",
 				"summary": "Müşteri tanı formu oluşturma",
-				"description": "Müşteri tanı (KYC) formatında yeni kayıt oluşturur: onay bekleyen bir form yazılır (isApproval daima false doğar; API doğrudan onaylı müşteri yaratmaz; onay panel akışında tamamlanır). Aynı idNo ile onay bekleyen form varsa 409 CONFLICT döner ve details içinde existingId verilir. Salt okunur alanlar (isApproval, masakStatus, companiesId vb.) gönderilirse 400 döner. idType=company iken companyDocuments (taxDoc, activeDoc, registryDoc, signDoc) kabul edilir: Accord ile aynı doğrulama (PDF/JPEG/PNG, belge başına en fazla 2 MiB, uzantı ve dosya imzası kontrolü) uygulanır, içerik güvenli geçici depoya yazılır ve panel onayında kimlik servisine taşınır. Kimlik/pasaport görselleri için POST /v1/customers/identity-documents kullanılır.",
+				"description": "Müşteri tanı (KYC) formatında yeni kayıt oluşturur: onay bekleyen bir form yazılır (isApproval daima false doğar; API doğrudan onaylı müşteri yaratmaz; onay panel akışında tamamlanır). Aynı idNo ile onay bekleyen form varsa 409 CONFLICT döner ve details içinde existingId verilir. Salt okunur alanlar (isApproval, masakStatus, companiesId vb.) gönderilirse 400 döner. idType=company iken companyDocuments (taxDoc, activeDoc, registryDoc, signDoc) kabul edilir: Accord ile aynı doğrulama (PDF/JPEG/PNG, belge başına en fazla 2 MiB, uzantı ve dosya imzası kontrolü) uygulanır, içerik güvenli geçici depoya yazılır ve panel onayında kimlik servisine taşınır. Bu forma ait kimlik/pasaport görselleri PUT /v1/customers/verifications/{id}/identity-documents/{side} ile yüklenir.",
 				"tags": ["Customers"],
 				"requestBody": {
 					"required": true,
@@ -888,7 +888,7 @@
 			"get": {
 				"operationId": "getComplianceVerification",
 				"summary": "Müşteri tanı formu detayı",
-				"description": "Tek formun geniş kaydını döner. Belge içerikleri dönmez; companyDocuments yalnız dosya metası (fileName, mimeType, size) içerir.",
+				"description": "Tek formun geniş kaydını döner. Belge içerikleri dönmez; companyDocuments ve varsa signedDocument yalnız dosya metası içerir.",
 				"tags": ["Customers"],
 				"parameters": [
 					{
@@ -933,6 +933,437 @@
 					},
 					"500": {
 						"$ref": "#/components/responses/InternalError"
+					}
+				}
+			}
+		},
+		"/v1/customers/verifications/{id}/identity-documents/{side}": {
+			"put": {
+				"operationId": "putVerificationIdentityDocument",
+				"summary": "Müşteri tanı formuna kimlik görseli yükleme",
+				"description": "Onay bekleyen müşteri tanı formunun ön veya arka kimlik görselini ham dosya gövdesiyle ekler ya da aynı tarafı güvenli biçimde değiştirir. Kimlik numarası formdan alınır. İmzalanmış veya onaylanmış form değiştirilemez. Pasaport için yalnız front kabul edilir. Bu ikili dosya ucunda JSON data zarfı kullanılmaz.",
+				"tags": ["Customers"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Müşteri tanı formu kimliği (ObjectId).",
+						"schema": {
+							"type": "string",
+							"pattern": "^[a-fA-F0-9]{24}$"
+						}
+					},
+					{
+						"name": "side",
+						"in": "path",
+						"required": true,
+						"description": "Kimlik görselinin tarafı.",
+						"schema": {
+							"type": "string",
+							"enum": ["front", "rear"]
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"image/jpeg": {
+							"schema": {
+								"type": "string",
+								"format": "binary"
+							}
+						},
+						"image/png": {
+							"schema": {
+								"type": "string",
+								"format": "binary"
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Kimlik görseli forma bağlandı. Aynı içerikle tekrar çağrı idempotenttir.",
+						"headers": {
+							"ETag": {
+								"description": "Güncel form sürümü. İmzasız PDF ayrıca kendi ETag değerini döndürür.",
+								"schema": {
+									"type": "string"
+								}
+							}
+						},
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VerificationIdentityUploadResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"description": "Form onaylanmış, imzalanmış veya eşzamanlı olarak değiştirilmiş.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"413": {
+						"description": "Kimlik görsellerinin toplam boyutu izin verilen sınırı aşıyor.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"415": {
+						"description": "Desteklenmeyen dosya türü.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/v1/customers/verifications/{id}/pdf": {
+			"get": {
+				"operationId": "getVerificationPdf",
+				"summary": "Müşteri tanı formu PDF çıktısı",
+				"description": "Belirtilen bekleyen veya onaylanmış formun imzasız PDF çıktısını üretir. Başarılı yanıt JSON değil, doğrudan PDF dosyasıdır. Yanıttaki ETag değeri imzalı PDF yüklenirken If-Match başlığında aynen gönderilmelidir. PDF üretmek formu onaylamaz veya imzalı duruma getirmez.",
+				"tags": ["Customers"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Müşteri tanı formu kimliği (ObjectId).",
+						"schema": {
+							"type": "string",
+							"pattern": "^[a-fA-F0-9]{24}$"
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Müşteri tanı formu PDF çıktısı.",
+						"headers": {
+							"ETag": {
+								"required": true,
+								"description": "PDF'nin üretildiği form sürümü.",
+								"schema": {
+									"type": "string"
+								}
+							},
+							"Content-Disposition": {
+								"schema": {
+									"type": "string"
+								}
+							}
+						},
+						"content": {
+							"application/pdf": {
+								"schema": {
+									"type": "string",
+									"format": "binary"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"description": "Yalnız fatura kaydı için PDF üretilemez.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"424": {
+						"description": "Formun bağlı verisi kullanılamıyor.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "PDF servisi geçerli çıktı üretmedi.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"503": {
+						"description": "PDF servisi yapılandırılmamış veya yoğun.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"504": {
+						"description": "PDF servisi zaman aşımına uğradı.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"/v1/customers/verifications/{id}/signed-pdf": {
+			"get": {
+				"operationId": "getSignedVerificationPdf",
+				"summary": "İmzalı müşteri tanı formunu indirme",
+				"description": "Forma bağlanan imzalı PDF dosyasını güvenli belge deposundan aktarır. Dahili dosya adresi veya erişim anahtarı dönmez.",
+				"tags": ["Customers"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Müşteri tanı formu kimliği (ObjectId).",
+						"schema": {
+							"type": "string",
+							"pattern": "^[a-fA-F0-9]{24}$"
+						}
+					},
+					{
+						"name": "download",
+						"in": "query",
+						"required": false,
+						"description": "true ise Content-Disposition attachment olur. Varsayılan inline.",
+						"schema": {
+							"type": "boolean",
+							"default": false
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "İmzalı müşteri tanı formu PDF dosyası.",
+						"content": {
+							"application/pdf": {
+								"schema": {
+									"type": "string",
+									"format": "binary"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"404": {
+						"description": "Form veya imzalı PDF bulunamadı.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"409": {
+						"description": "Yalnız fatura kaydına imzalı müşteri tanı formu bağlanamaz.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"424": {
+						"description": "İmzalı PDF güvenli depodan alınamadı veya doğrulanamadı.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					}
+				}
+			},
+			"put": {
+				"operationId": "putSignedVerificationPdf",
+				"summary": "İmzalı müşteri tanı formunu yükleme",
+				"description": "E-ticaret tarafında müşteriye imzalatılan nihai PDF dosyasını forma bağlar ve isSigned değerini true yapar. Formu onaylamaz. PDF ham application/pdf gövdesiyle gönderilir; JSON data zarfı kullanılmaz. Aynı PDF aynı If-Match değeriyle tekrar gönderildiğinde mevcut sonuç döner. Farklı bir imzalı PDF sessizce mevcut belgenin üzerine yazılmaz.",
+				"tags": ["Customers"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"description": "Müşteri tanı formu kimliği (ObjectId).",
+						"schema": {
+							"type": "string",
+							"pattern": "^[a-fA-F0-9]{24}$"
+						}
+					},
+					{
+						"name": "If-Match",
+						"in": "header",
+						"required": true,
+						"description": "GET /v1/customers/verifications/{id}/pdf yanıtındaki ETag değeri.",
+						"schema": {
+							"type": "string"
+						}
+					}
+				],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/pdf": {
+							"schema": {
+								"type": "string",
+								"format": "binary",
+								"maxLength": 33554432
+							}
+						}
+					}
+				},
+				"responses": {
+					"200": {
+						"description": "Aynı imzalı PDF daha önce yüklenmiş; mevcut sonuç döndü.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VerificationSignedPdfResponse"
+								}
+							}
+						}
+					},
+					"201": {
+						"description": "İmzalı PDF güvenli depoya yazıldı ve forma bağlandı.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/VerificationSignedPdfResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"description": "Forma daha önce farklı bir imzalı PDF bağlanmış veya form eşzamanlı değiştirilmiş.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"412": {
+						"description": "If-Match değeri güncel form sürümüyle eşleşmiyor.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"413": {
+						"description": "PDF 32 MiB sınırını aşıyor.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"415": {
+						"description": "İstek application/pdf değil.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"424": {
+						"description": "Formun PDF kaynağına bağlı güncel veri kullanılamıyor.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"428": {
+						"description": "If-Match başlığı gönderilmedi.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "Belge servisine yükleme başarısız.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
 					}
 				}
 			}
@@ -1098,7 +1529,7 @@
 			"post": {
 				"operationId": "createIdentityDocument",
 				"summary": "Kimlik/pasaport belge görseli yükleme",
-				"description": "Müşteri tanı (accord) akışı için kimlik veya pasaport görseli yükler. Görsel base64 olarak gövdede gelir; belge servisine yüklenir ve kayıt oluşur. Cevapta görsel içerik veya görsel referansı dönmez. verificationId verilirse kayıt o müşteri tanı formuyla ilişkilendirilir.",
+				"description": "Bağımsız kimlik veya pasaport belge kaydı oluşturur. Görsel base64 olarak gövdede gelir; belge servisine yüklenir ve kayıt oluşur. Cevapta görsel içerik veya görsel referansı dönmez. E-ticaret Müşteri Tanı Formu akışında bu uç yerine PUT /v1/customers/verifications/{id}/identity-documents/{side} kullanılmalıdır.",
 				"tags": ["Customers"],
 				"requestBody": {
 					"required": true,
@@ -1399,7 +1830,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "Çakışma veya mükerrer fatura. Pasif hesaba bağlı banka hareketinde kod `BANK_ACCOUNT_INACTIVE` olur. Hareket başka bir gönderimce sahiplenilmiş, kontrol bekliyor, yeniden gönderim yetkisi/onayı eksik ya da aynı gün/kimlik/tutar ile serbest fatura kesilmiş de olabilir; `error.details[0].rule` nedeni gösterir.",
+						"description": "Çakışma veya mükerrer fatura. Pasif hesaba bağlı banka hareketinde kod `BANK_ACCOUNT_INACTIVE` olur. Hareket başka bir gönderimce sahiplenilmiş, yeniden gönderim yetkisi/onayı eksik ya da aynı gün/kimlik/tutar ile serbest fatura kesilmiş de olabilir; `error.details[0].rule` nedeni gösterir.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -1422,7 +1853,7 @@
 						"$ref": "#/components/responses/InternalError"
 					},
 					"502": {
-						"description": "E-belge servisi hatası. Sonucun timeout, bağlantı kopması veya 5xx nedeniyle kesinleştirilemediği durumda kod `UPSTREAM_RESULT_UNCERTAIN`, `details[0].state` değeri `review_required` ve `retryable` değeri false olur; aynı banka hareketini otomatik tekrar göndermeyin.",
+						"description": "E-belge servisi hatası. Başarısız gönderimin işlem kilidi kaldırılır; aynı banka hareketi daha sonra yeniden denenebilir.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4486,6 +4917,118 @@
 					}
 				}
 			},
+			"SignedDocumentMeta": {
+				"type": "object",
+				"nullable": true,
+				"description": "İmzalı PDF içeriği ve dahili depolama bilgileri dönmez; yalnız güvenli dosya metası.",
+				"properties": {
+					"id": {
+						"type": "string",
+						"description": "İmzalı belge kayıt kimliği."
+					},
+					"fileName": {
+						"type": "string"
+					},
+					"mimeType": {
+						"type": "string",
+						"enum": ["application/pdf"]
+					},
+					"size": {
+						"type": "integer",
+						"nullable": true,
+						"minimum": 1
+					},
+					"sha256": {
+						"type": "string",
+						"nullable": true,
+						"pattern": "^[a-f0-9]{64}$"
+					},
+					"uploadedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				}
+			},
+			"VerificationIdentityUploadResult": {
+				"type": "object",
+				"properties": {
+					"verificationId": {
+						"type": "string"
+					},
+					"type": {
+						"type": "string",
+						"enum": ["front", "rear"]
+					},
+					"fileName": {
+						"type": "string"
+					},
+					"mimeType": {
+						"type": "string",
+						"enum": ["image/jpeg", "image/png"]
+					},
+					"size": {
+						"type": "integer",
+						"minimum": 1
+					},
+					"sha256": {
+						"type": "string",
+						"pattern": "^[a-f0-9]{64}$"
+					},
+					"updatedAt": {
+						"type": "string",
+						"format": "date-time"
+					}
+				},
+				"required": ["verificationId", "type", "fileName", "mimeType", "size", "sha256", "updatedAt"]
+			},
+			"VerificationIdentityUploadResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"$ref": "#/components/schemas/VerificationIdentityUploadResult"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaBase"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"VerificationSignedPdfResult": {
+				"type": "object",
+				"properties": {
+					"verificationId": {
+						"type": "string"
+					},
+					"isSigned": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"signedDocument": {
+						"$ref": "#/components/schemas/SignedDocumentMeta"
+					}
+				},
+				"required": ["verificationId", "isSigned", "signedDocument"]
+			},
+			"VerificationSignedPdfResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"$ref": "#/components/schemas/VerificationSignedPdfResult"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaBase"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
 			"VerificationDetail": {
 				"allOf": [
 					{
@@ -4558,6 +5101,9 @@
 							},
 							"requirementsSnapshot": {
 								"$ref": "#/components/schemas/RequirementsSnapshot"
+							},
+							"signedDocument": {
+								"$ref": "#/components/schemas/SignedDocumentMeta"
 							}
 						}
 					}
@@ -5794,7 +6340,7 @@
 							},
 							"verificationId": {
 								"type": "string",
-								"description": "İlişkilendirilecek müşteri tanı formu kimliği (opsiyonel)."
+								"description": "Eski entegrasyonlarla uyumluluk için opsiyonel ilişki kimliği. MTF kimlik yükleme akışının yerine geçmez."
 							}
 						},
 						"required": ["idNo", "type", "fileName", "mimeType", "content"]
