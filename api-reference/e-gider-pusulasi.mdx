@@ -1,0 +1,249 @@
+---
+title: "E-gider pusulası"
+description: "Elektronik taslak, SMS doğrulaması, gönderim durumu ve PDF/XML erişimi"
+---
+
+E-gider, firmanız için yönetim ekranından açılır. Yalnız aktivasyondan sonra oluşturulan pusulalar elektronik olur. Mevcut kağıt belgeler ve eski taslaklar türünü korur. Yeni elektronik kaydı `POST /v1/expenses` ile `isDraft: true` göndererek oluşturun. Kayıt oluşturmadan hesaplama için [Gider pusulası işlemleri](/api-reference/gider-pusulasi-olusturma) sayfasına bakın. Kimlik doğrulama ve cevap zarfı [Genel Bakış](/api-reference/genel-bakis) sayfasındadır.
+
+Gönderim sırası `prepare` → PDF önizlemesi → `sms` → `confirm` şeklindedir. Taslak hazırlandığında içerik ve telefon kilitlenir. İlk aşama yalnız vergisiz alım pusulasını, TRY ve döviz kuru 1 ile destekler. Has kuru kalem hesabında kullanılır; belgenin döviz kuru değildir.
+
+<Warning>
+  Gönderimin sonucu belirsizse yeni belge oluşturmayın ve onayı tekrar göndermeyin. Aynı yerel kayıt için `status` çağırın. `review_required` durumu sonuç netleşene kadar korunur. Gönderilen e-gider silinemez; iptal ve GİB rapor gönderimi sağlayıcı portalından yürütülür.
+</Warning>
+
+## `POST /v1/expenses/{id}/e-document/prepare` — taslağı hazırlayın
+
+Yerel elektronik taslağı hazırlayın. Gerçek satıcı TCKN/VKN'si, adı, adresi, cep telefonu ve kalemleri doğrulanır. Genel müşteri veya rastgele kimlik bilgisiyle elektronik gönderim yapılmaz.
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/prepare' \
+  -u 'apiUserId:secretKey' -H 'Content-Type: application/json' \
+  -d '{"data":{}}'
+```
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `id` | string, path | Yerel pusula kimliği. Kayıt `electronic` olmalıdır |
+| `data` | object | Boş nesne. İçerik kayıtlı pusuladan alınır |
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6ab2f0c21ae2463211cf4321",
+    "documentMode": "electronic",
+    "isFinalized": false,
+    "eDocument": {
+      "environment": "test",
+      "uuid": "93f65d9f-b32a-434b-b8c7-16ba9151f307",
+      "number": null,
+      "state": "prepared",
+      "phone": "905321234567",
+      "frozenAt": "2026-10-09T10:00:00.000Z",
+      "preparedAt": "2026-10-09T10:00:01.000Z",
+      "smsSentAt": null,
+      "smsRetryAt": null,
+      "acceptedAt": null,
+      "finalizedAt": null,
+      "lastCheckedAt": null,
+      "providerStatus": null,
+      "statusDetail": null,
+      "reportStatus": null,
+      "cancelled": null,
+      "errorCode": null,
+      "errorMessage": null
+    }
+  },
+  "meta": {"requestId":"c6c85e42-dd06-4cb3-885b-c0ca551ee866","timestamp":"2026-10-09T10:00:01.000Z"}
+}
+```
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| 409 | `E_DOCUMENT_PAPER` | Kağıt belge bu akışla gönderilemez |
+| 409 | `E_DOCUMENT_BUSY` / `E_DOCUMENT_REVIEW_REQUIRED` | İşlem sürüyor veya önce durum kontrolü gerekiyor |
+| 422 | `E_DOCUMENT_DATA_INCOMPLETE` | Satıcı veya kalem bilgilerini tamamlayın |
+| 422 | `E_DOCUMENT_CONFIG_MISSING` / `E_DOCUMENT_COMPANY_MISMATCH` | Firma bağlantısı doğrulanmalıdır |
+| 502 | `E_DOCUMENT_RESULT_UNKNOWN` / `E_DOCUMENT_RESPONSE_INVALID` | Sonuç belirsiz; aynı kaydı sorgulayın |
+
+<Note>Yerel `serial` ve `number`, resmi e-gider numarası değildir. Resmi numara gönderim kabul edildikten sonra `eDocument.number` alanına yazılır.</Note>
+
+## `POST /v1/expenses/{id}/e-document/sms` — SMS gönderin
+
+Hazırlanan belgenin sabit telefonuna doğrulama SMS'i gönderin. UUID kayıtlı pusuladan alınır; SMS cevabı yeni UUID oluşturmaz.
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/sms' \
+  -u 'apiUserId:secretKey' -H 'Content-Type: application/json' \
+  -d '{"data":{}}'
+```
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `id` | string, path | Hazırlanmış elektronik pusula |
+| `data` | object | Boş nesne. Telefon değişikliği kabul edilmez |
+
+### Cevap — `200`
+
+`prepare` ile aynı zarf döner. `eDocument.state` değeri `verification_pending` olur. `smsSentAt` gönderim zamanını, `smsRetryAt` yeniden SMS gönderebileceğiniz zamanı gösterir.
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6ab2f0c21ae2463211cf4321",
+    "documentMode": "electronic",
+    "isFinalized": false,
+    "eDocument": {
+      "environment": "test",
+      "uuid": "93f65d9f-b32a-434b-b8c7-16ba9151f307",
+      "state": "verification_pending",
+      "phone": "905321234567",
+      "smsSentAt": "2026-10-09T10:01:00.000Z",
+      "smsRetryAt": "2026-10-09T10:04:00.000Z"
+    }
+  },
+  "meta": {"requestId":"c6c85e42-dd06-4cb3-885b-c0ca551ee866","timestamp":"2026-10-09T10:01:00.000Z"}
+}
+```
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| 409 | `E_DOCUMENT_NOT_PREPARED` | Önce taslağı hazırlayın |
+| 409 | `E_DOCUMENT_BUSY` / `E_DOCUMENT_REVIEW_REQUIRED` | İşlem sürüyor veya kontrol gerekiyor |
+| 429 | `E_DOCUMENT_SMS_COOLDOWN` | `smsRetryAt` sonrasını bekleyin |
+| 422 | `E_DOCUMENT_REJECTED` | SMS bekleme süresi veya firma SMS kotasını kontrol edin |
+| 502 | `E_DOCUMENT_RESULT_UNKNOWN` | Sonuç belirsiz; aynı kaydı sorgulayın |
+
+## `POST /v1/expenses/{id}/e-document/confirm` — kodla onaylayın
+
+Satıcının telefonuna gelen kodla belgeyi gönderin. Gönderim kabulü resmi UUID ve numara ile kaydedildikten sonra yerel kesinleştirme, stok ve banka bağlantıları tamamlanır.
+
+```bash
+curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/confirm' \
+  -u 'apiUserId:secretKey' -H 'Content-Type: application/json' \
+  -d '{"data":{"code":"123456"}}'
+```
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `id` | string, path | SMS gönderilmiş elektronik pusula |
+| `data.code` | string | 4–8 rakam. Kod saklanmaz ve API loguna yazılmaz |
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6ab2f0c21ae2463211cf4321",
+    "documentMode": "electronic",
+    "isFinalized": true,
+    "eDocument": {
+      "environment": "test",
+      "uuid": "93f65d9f-b32a-434b-b8c7-16ba9151f307",
+      "number": "EGP2026000000001",
+      "state": "sent",
+      "acceptedAt": "2026-10-09T10:02:00.000Z",
+      "finalizedAt": "2026-10-09T10:02:01.000Z",
+      "providerStatus": "unknown"
+    }
+  },
+  "meta": {"requestId":"c6c85e42-dd06-4cb3-885b-c0ca551ee866","timestamp":"2026-10-09T10:02:01.000Z"}
+}
+```
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| 400 | `VALIDATION_FAILED` | Kod biçimi geçersiz |
+| 409 | `VERIFICATION_REQUIRED` | Önce SMS gönderin |
+| 409 | `E_DOCUMENT_BUSY` / `E_DOCUMENT_REVIEW_REQUIRED` | İşlem sürüyor veya sonuç belirsiz |
+| 409 | `BANK_ACCOUNT_INACTIVE` | Kaynak banka hesabı pasif |
+| 422 | `E_DOCUMENT_REJECTED` | Kod yanlış, süresi dolmuş veya iş kuralı reddedildi |
+| 502 | `E_DOCUMENT_RESULT_UNKNOWN` / `E_DOCUMENT_RESPONSE_INVALID` | Onayı tekrar göndermeden durum sorgulayın |
+
+<Warning>Kabul sonrası yerel kayıt hatasında belge `review_required` olabilir. `status`, yeni gönderim yapmadan kesinleştirmeyi tamamlar. Aynı banka hareketi için `allowDuplicate: true` ile ikinci elektronik taslak açılamaz.</Warning>
+
+## `GET /v1/expenses/{id}/e-document/status` — durumu yenileyin
+
+Aynı UUID için gönderim kabulünü ve sağlayıcı durumunu sorgulayın. Kabul edilmiş kaydın yarım kalan yerel işlemleri mükerrer stok oluşmadan tamamlanır.
+
+```bash
+curl 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/status' \
+  -u 'apiUserId:secretKey'
+```
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `id` | string, path | Elektronik pusula kimliği |
+
+### Cevap — `200`
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6ab2f0c21ae2463211cf4321",
+    "documentMode": "electronic",
+    "isFinalized": true,
+    "eDocument": {
+      "environment": "test",
+      "uuid": "93f65d9f-b32a-434b-b8c7-16ba9151f307",
+      "number": "EGP2026000000001",
+      "state": "sent",
+      "acceptedAt": "2026-10-09T10:02:00.000Z",
+      "finalizedAt": "2026-10-09T10:02:01.000Z",
+      "providerStatus": "succeed",
+      "reportStatus": "Reported",
+      "cancelled": false,
+      "lastCheckedAt": "2026-10-09T10:10:00.000Z"
+    }
+  },
+  "meta": {"requestId":"c6c85e42-dd06-4cb3-885b-c0ca551ee866","timestamp":"2026-10-09T10:10:00.000Z"}
+}
+```
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| 404 | `RESOURCE_NOT_FOUND` | Firma kapsamındaki yerel pusula bulunamadı |
+| 409 | `E_DOCUMENT_BUSY` | Başka işlem sürüyor; daha sonra sorgulayın |
+| 409 | `E_DOCUMENT_FINALIZATION_REQUIRED` | Kabul edildi; yerel kesinleştirme tekrar kontrol edilmelidir |
+| 502 | `E_DOCUMENT_RESULT_UNKNOWN` | Sağlayıcıya erişilemedi; sonuç bilinmiyor |
+
+| Alan | Anlam |
+|---|---|
+| `state` | Yerel işlem: `draft`, `preparing`, `prepared`, `sms_sending`, `verification_pending`, `dispatching`, `provider_accepted`, `sent`, `failed`, `review_required`, `deleting` |
+| `acceptedAt` | Gönderimin kabul edildiği zaman |
+| `finalizedAt` | Stok ve banka bağlantılarının yerelde tamamlandığı zaman |
+| `providerStatus` | `unknown`, `waiting`, `succeed`, `error`. Yerel kesinleştirmeden bağımsızdır |
+| `reportStatus` | `NotReported` veya `Reported`; GİB raporu |
+| `cancelled` | Sağlayıcı portalındaki iptal bilgisi |
+
+<Note>Gönderim timeout'u sonrası belgenin sağlayıcıda henüz bulunmaması, reddedildiğini kanıtlamaz. Böyle bir kayıt `review_required` kalır; otomatik yeniden gönderim yapılmaz.</Note>
+
+## `GET /v1/expenses/{id}/e-document/file` — PDF veya XML alın
+
+Hazırlanan taslağın veya gönderilen belgenin dosyasını firma yetkisiyle alın. Test/canlı ortamı kayıt üzerinde sabittir; firma ayarını kapatmak eski elektronik belgenin dosya erişimini değiştirmez. İlgili ortamın bağlantısı korunmalıdır.
+
+```bash
+curl 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/file?format=pdf' \
+  -u 'apiUserId:secretKey' -o gider-pusulasi.pdf
+```
+
+| Alan | Tür | Kural |
+|---|---|---|
+| `id` | string, path | Elektronik pusula kimliği |
+| `format` | string, query | Zorunlu: `pdf` veya `xml` |
+
+### Cevap — `200`
+
+JSON zarfı kullanılmaz. PDF için `application/pdf`, XML için `application/xml` içerik döner. Cevap `Cache-Control: private, no-store` taşır.
+
+| HTTP | `error.code` | Açıklama |
+|---|---|---|
+| 400 | `VALIDATION_FAILED` | Dosya biçimi geçersiz |
+| 404 | `RESOURCE_NOT_FOUND` | Firma kapsamındaki kayıt bulunamadı |
+| 409 | `E_DOCUMENT_NOT_PREPARED` | Önce taslağı hazırlayın |
+| 502 | `E_DOCUMENT_FILE_INVALID` | Geçerli dosya alınamadı |

@@ -3226,6 +3226,44 @@
 							"type": "string",
 							"format": "date-time"
 						}
+					},
+					{
+						"name": "documentMode",
+						"in": "query",
+						"schema": {
+							"type": "string",
+							"enum": ["paper", "electronic"]
+						},
+						"description": "Belge türü. Eski kayıtlar paper filtresine dahildir."
+					},
+					{
+						"name": "eDocumentState",
+						"in": "query",
+						"schema": {
+							"type": "string",
+							"enum": [
+								"draft",
+								"preparing",
+								"prepared",
+								"sms_sending",
+								"verification_pending",
+								"dispatching",
+								"provider_accepted",
+								"sent",
+								"failed",
+								"review_required",
+								"deleting"
+							]
+						},
+						"description": "Elektronik gönderim durumu."
+					},
+					{
+						"name": "eDocumentNumber",
+						"in": "query",
+						"schema": {
+							"type": "string"
+						},
+						"description": "Resmi e-gider numarası tam eşleşme."
 					}
 				],
 				"responses": {
@@ -3261,7 +3299,7 @@
 			"post": {
 				"operationId": "createExpense",
 				"summary": "Gider pusulası oluşturma",
-				"description": "Gider pusulası oluşturur. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — aktif bir banka hesabına bağlı, resmileştirilmemiş **giden** banka hareketinden. Hesap pasifse önizleme, taslak ve oluşturma `409 BANK_ACCOUNT_INACTIVE` ile reddedilir. Hareket resmileştirilmiş olarak işaretlenir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest gider pusulası.\n\nVarsayılan olarak pusula **kesinleştirilir**: seri-sıra numarası verilir, yazdırma tarihi yazılır ve stok hareketi oluşur. `isDraft: true` gönderildiğinde kayıt oluşur ama kesinleştirilmez; bu kayıt `DELETE /v1/expenses/{id}` ile iptal edilebilir.\n\nSeri ve sıra numarası verilmezse firma ayarından üretilir ve kullanımda olmadığı doğrulanır.",
+				"description": "Gider pusulası oluşturur. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — aktif bir banka hesabına bağlı, resmileştirilmemiş **giden** banka hareketinden. Hesap pasifse önizleme, taslak ve oluşturma `409 BANK_ACCOUNT_INACTIVE` ile reddedilir. Hareket resmileştirilmiş olarak işaretlenir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest gider pusulası.\n\nVarsayılan olarak pusula **kesinleştirilir**: seri-sıra numarası verilir, yazdırma tarihi yazılır ve stok hareketi oluşur. `isDraft: true` gönderildiğinde kayıt oluşur ama kesinleştirilmez; bu kayıt `DELETE /v1/expenses/{id}` ile iptal edilebilir.\n\nSeri ve sıra numarası verilmezse firma ayarından üretilir ve kullanımda olmadığı doğrulanır.\n\nE-gider aktif firmada yeni kayıt electronic olur ve isDraft:true zorunludur. Aksi halde kayıt ve numara oluşturmadan 422 VERIFICATION_REQUIRED döner. Elektronik kayıt /e-document/prepare → /sms → /confirm ile gönderilir. Eski kayıtların türü değişmez.",
 				"tags": ["Expenses"],
 				"requestBody": {
 					"required": true,
@@ -3313,7 +3351,7 @@
 						}
 					},
 					"422": {
-						"description": "İş kuralı hatası (ayar eksik/pasif, TCKN/VKN doğrulanamadı, e-fatura mükellefi, kalem hesaplanamadı).",
+						"description": "İş kuralı hatası (ayar eksik/pasif, TCKN/VKN doğrulanamadı, e-fatura mükellefi, kalem hesaplanamadı). Elektronik firmada isDraft:true yoksa VERIFICATION_REQUIRED döner.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3381,7 +3419,7 @@
 			"delete": {
 				"operationId": "cancelExpenseDraft",
 				"summary": "Kesinleştirilmemiş gider pusulasının iptali",
-				"description": "Kesinleştirilmemiş (taslak) gider pusulasını siler. **Kesinleştirilmiş pusula bu uçtan silinemez** ve denendiğinde `409` döner. Silme sırasında bağlı giden banka hareketi yeniden işlenebilir duruma döner.",
+				"description": "Kesinleştirilmemiş (taslak) gider pusulasını siler. **Kesinleştirilmiş pusula bu uçtan silinemez** ve denendiğinde `409` döner. Silme sırasında bağlı giden banka hareketi yeniden işlenebilir duruma döner. Elektronik belgede sağlayıcı taslağı da kaldırılır. Gönderilen, işlem kilidi olan veya sonucu belirsiz elektronik belge silinemez.",
 				"tags": ["Expenses"],
 				"parameters": [
 					{
@@ -3753,6 +3791,490 @@
 					},
 					"422": {
 						"description": "İş kuralı hatası (ayar eksik/pasif, TCKN/VKN doğrulanamadı, e-fatura mükellefi, kalem hesaplanamadı).",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					}
+				}
+			}
+		},
+		"/v1/expenses/{id}/e-document/prepare": {
+			"post": {
+				"operationId": "prepareExpenseEDocument",
+				"summary": "Elektronik taslağı hazırlayın",
+				"description": "Yerel elektronik taslağı hazırlar. Gerçek satıcı kimliği, ad/adres/telefon ve kalemler doğrulanır. İçerik ve telefon kilitlenir; PDF önizlemesi file ucundan alınır.",
+				"tags": ["Expenses"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						},
+						"description": "Yerel elektronik pusula kimliği."
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "İşlem sonucu.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ExpenseEDocumentResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"403": {
+						"$ref": "#/components/responses/Forbidden"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "E_DOCUMENT_DATA_INCOMPLETE, E_DOCUMENT_REJECTED, E_DOCUMENT_COMPANY_MISMATCH veya E_DOCUMENT_CONFIG_MISSING.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "E_DOCUMENT_SMS_COOLDOWN. smsRetryAt sonrasını bekleyin.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ExpenseEDocumentEmptyRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/v1/expenses/{id}/e-document/sms": {
+			"post": {
+				"operationId": "sendExpenseVerificationSms",
+				"summary": "SMS gönderin",
+				"description": "Hazırlanan belgenin sabit UUID ve telefonunu kullanır. smsRetryAt dolmadan ikinci SMS gönderilmez. SMS cevabından yeni belge kimliği üretilmez.",
+				"tags": ["Expenses"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						},
+						"description": "Yerel elektronik pusula kimliği."
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "İşlem sonucu.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ExpenseEDocumentResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"403": {
+						"$ref": "#/components/responses/Forbidden"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "E_DOCUMENT_DATA_INCOMPLETE, E_DOCUMENT_REJECTED, E_DOCUMENT_COMPANY_MISMATCH veya E_DOCUMENT_CONFIG_MISSING.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "E_DOCUMENT_SMS_COOLDOWN. smsRetryAt sonrasını bekleyin.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ExpenseEDocumentEmptyRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/v1/expenses/{id}/e-document/confirm": {
+			"post": {
+				"operationId": "confirmExpenseEDocument",
+				"summary": "Kodla onaylayıp gönderin",
+				"description": "Code doğrulamasıyla belgeyi gönderir. Geçerli UUID ve resmi numara kabul edildikten sonra stok ve banka bağlantıları kesinleştirilir. Kabul, sağlayıcı waiting/succeed/error ve GİB rapor durumundan ayrıdır.",
+				"tags": ["Expenses"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						},
+						"description": "Yerel elektronik pusula kimliği."
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "İşlem sonucu.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ExpenseEDocumentResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"403": {
+						"$ref": "#/components/responses/Forbidden"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "E_DOCUMENT_DATA_INCOMPLETE, E_DOCUMENT_REJECTED, E_DOCUMENT_COMPANY_MISMATCH veya E_DOCUMENT_CONFIG_MISSING.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "E_DOCUMENT_SMS_COOLDOWN. smsRetryAt sonrasını bekleyin.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					}
+				},
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/ExpenseEDocumentConfirmRequest"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/v1/expenses/{id}/e-document/status": {
+			"get": {
+				"operationId": "getExpenseEDocumentStatus",
+				"summary": "Durumu yenileyin",
+				"description": "Aynı UUID sorgulanır. Kabul sonrası kesilen yerel kesinleştirme, ikinci stok veya belge oluşmadan tamamlanır. Timeout/404 gönderimin reddedildiğini kanıtlamaz; review_required sonuç netleşene kadar korunur.",
+				"tags": ["Expenses"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						},
+						"description": "Yerel elektronik pusula kimliği."
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "İşlem sonucu.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ExpenseEDocumentResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"403": {
+						"$ref": "#/components/responses/Forbidden"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "E_DOCUMENT_DATA_INCOMPLETE, E_DOCUMENT_REJECTED, E_DOCUMENT_COMPANY_MISMATCH veya E_DOCUMENT_CONFIG_MISSING.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "E_DOCUMENT_SMS_COOLDOWN. smsRetryAt sonrasını bekleyin.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					}
+				}
+			}
+		},
+		"/v1/expenses/{id}/e-document/file": {
+			"get": {
+				"operationId": "getExpenseEDocumentFile",
+				"summary": "PDF veya XML alın",
+				"description": "Yetkili firma kapsamında hazırlanmış taslağın veya gönderilen belgenin dosyasını alır. Elektronik belge şirket ayarı kapatılsa da türünü ve ortamını korur.",
+				"tags": ["Expenses"],
+				"parameters": [
+					{
+						"name": "id",
+						"in": "path",
+						"required": true,
+						"schema": {
+							"type": "string"
+						},
+						"description": "Yerel elektronik pusula kimliği."
+					},
+					{
+						"name": "format",
+						"in": "query",
+						"required": true,
+						"schema": {
+							"type": "string",
+							"enum": ["pdf", "xml"]
+						}
+					}
+				],
+				"responses": {
+					"200": {
+						"description": "Belge içeriği. JSON zarfı kullanılmaz.",
+						"content": {
+							"application/pdf": {
+								"schema": {
+									"type": "string",
+									"format": "binary"
+								}
+							},
+							"application/xml": {
+								"schema": {
+									"type": "string",
+									"format": "binary"
+								}
+							}
+						},
+						"headers": {
+							"Cache-Control": {
+								"schema": {
+									"type": "string"
+								},
+								"description": "private, no-store"
+							}
+						}
+					},
+					"400": {
+						"$ref": "#/components/responses/ValidationFailed"
+					},
+					"401": {
+						"$ref": "#/components/responses/Unauthorized"
+					},
+					"403": {
+						"$ref": "#/components/responses/Forbidden"
+					},
+					"404": {
+						"$ref": "#/components/responses/NotFound"
+					},
+					"409": {
+						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"422": {
+						"description": "E_DOCUMENT_DATA_INCOMPLETE, E_DOCUMENT_REJECTED, E_DOCUMENT_COMPANY_MISMATCH veya E_DOCUMENT_CONFIG_MISSING.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"429": {
+						"description": "E_DOCUMENT_SMS_COOLDOWN. smsRetryAt sonrasını bekleyin.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -6525,6 +7047,19 @@
 					"updatedAt": {
 						"type": "string",
 						"format": "date-time"
+					},
+					"documentMode": {
+						"type": "string",
+						"enum": ["paper", "electronic"],
+						"description": "Alanı olmayan eski kayıtlar paper kabul edilir. Oluşturulduktan sonra değişmez."
+					},
+					"eDocument": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/ExpenseEDocument"
+							}
+						],
+						"nullable": true
 					}
 				}
 			},
@@ -7412,12 +7947,12 @@
 							"isDraft": {
 								"type": "boolean",
 								"default": false,
-								"description": "true ise pusula kesinleştirilmez; kayıt taslak olarak kalır."
+								"description": "Kağıt belgede isteğe bağlıdır. E-gider aktif firmada true zorunludur; aksi halde kayıt oluşmadan 422 VERIFICATION_REQUIRED döner."
 							},
 							"allowDuplicate": {
 								"type": "boolean",
 								"default": false,
-								"description": "true ise mükerrer kayıt kontrolü atlanır."
+								"description": "Aynı gün/kimlik/tutar kontrolünü atlar; elektronik banka hareketi rezervasyonunu atlamaz."
 							}
 						},
 						"required": ["source", "idNo"]
@@ -7555,6 +8090,19 @@
 					},
 					"customer": {
 						"$ref": "#/components/schemas/InvoicePreviewCustomer"
+					},
+					"documentMode": {
+						"type": "string",
+						"enum": ["paper", "electronic"],
+						"description": "Alanı olmayan eski kayıtlar paper kabul edilir. Oluşturulduktan sonra değişmez."
+					},
+					"eDocument": {
+						"allOf": [
+							{
+								"$ref": "#/components/schemas/ExpenseEDocument"
+							}
+						],
+						"nullable": true
 					}
 				}
 			},
@@ -7766,6 +8314,173 @@
 					}
 				},
 				"required": ["success", "data", "meta"]
+			},
+			"ExpenseEDocument": {
+				"type": "object",
+				"description": "Elektronik gönderim özeti. Kabul ve yerel kesinleştirme, sağlayıcı/GİB rapor durumundan ayrı izlenir. Gizli bağlantı bilgisi içermez.",
+				"properties": {
+					"environment": {
+						"type": "string",
+						"enum": ["test", "production"]
+					},
+					"uuid": {
+						"type": "string",
+						"format": "uuid"
+					},
+					"number": {
+						"type": "string",
+						"nullable": true,
+						"description": "Gönderim kabulü ile kaydedilen resmi belge numarası. Yerel serial/number alanlarından ayrıdır."
+					},
+					"state": {
+						"type": "string",
+						"enum": [
+							"draft",
+							"preparing",
+							"prepared",
+							"sms_sending",
+							"verification_pending",
+							"dispatching",
+							"provider_accepted",
+							"sent",
+							"failed",
+							"review_required",
+							"deleting"
+						]
+					},
+					"phone": {
+						"type": "string",
+						"nullable": true,
+						"description": "Hazırlanan taslağın sabit doğrulama telefonu."
+					},
+					"providerStatus": {
+						"type": "string",
+						"nullable": true,
+						"enum": ["unknown", "waiting", "succeed", "error"]
+					},
+					"statusDetail": {
+						"type": "string",
+						"nullable": true
+					},
+					"reportStatus": {
+						"type": "string",
+						"nullable": true,
+						"enum": ["NotReported", "Reported"]
+					},
+					"cancelled": {
+						"type": "boolean",
+						"nullable": true
+					},
+					"errorCode": {
+						"type": "string",
+						"nullable": true
+					},
+					"errorMessage": {
+						"type": "string",
+						"nullable": true
+					},
+					"frozenAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"preparedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"smsSentAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"smsRetryAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"acceptedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"finalizedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					},
+					"lastCheckedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true
+					}
+				},
+				"required": ["environment", "uuid", "state"]
+			},
+			"ExpenseEDocumentResult": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string"
+					},
+					"documentMode": {
+						"type": "string",
+						"enum": ["electronic"]
+					},
+					"isFinalized": {
+						"type": "boolean"
+					},
+					"eDocument": {
+						"$ref": "#/components/schemas/ExpenseEDocument"
+					}
+				},
+				"required": ["id", "documentMode", "isFinalized", "eDocument"]
+			},
+			"ExpenseEDocumentResponse": {
+				"type": "object",
+				"properties": {
+					"success": {
+						"type": "boolean",
+						"enum": [true]
+					},
+					"data": {
+						"$ref": "#/components/schemas/ExpenseEDocumentResult"
+					},
+					"meta": {
+						"$ref": "#/components/schemas/MetaBase"
+					}
+				},
+				"required": ["success", "data", "meta"]
+			},
+			"ExpenseEDocumentEmptyRequest": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "object",
+						"additionalProperties": false
+					}
+				},
+				"required": ["data"],
+				"additionalProperties": false
+			},
+			"ExpenseEDocumentConfirmRequest": {
+				"type": "object",
+				"properties": {
+					"data": {
+						"type": "object",
+						"properties": {
+							"code": {
+								"type": "string",
+								"pattern": "^\\d{4,8}$",
+								"description": "Satıcının telefonuna gelen tek kullanımlık SMS kodu. Saklanmaz ve loglanmaz."
+							}
+						},
+						"required": ["code"],
+						"additionalProperties": false
+					}
+				},
+				"required": ["data"],
+				"additionalProperties": false
 			}
 		},
 		"responses": {

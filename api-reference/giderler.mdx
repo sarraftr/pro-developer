@@ -29,12 +29,17 @@ Ortak parametreler için [Genel Bakış](/api-reference/genel-bakis).
 | `startDate` / `endDate` | date-time | `transactionDate` aralığı |
 | `updatedSince` | date-time | Artımlı senkronizasyon |
 | `q` | string | Numerikse `idNo`, metinse ünvan araması |
+| `documentMode` | string | `paper` veya `electronic`. Alanı olmayan eski kayıtlar `paper` kabul edilir |
+| `eDocumentState` | string | Elektronik gönderim durumu; değerler [E-gider pusulası](/api-reference/e-gider-pusulasi) sayfasındadır |
+| `eDocumentNumber` | string | Resmi e-gider numarası tam eşleşme |
 
 Sıralama whitelist'i: `transactionDate`, `createdAt`, `updatedAt`, `amount`. Varsayılan `transactionDate:asc`.
 
 ### Cevap alanları (liste öğesi)
 
 `id`, `stamp`, `serial`, `number`, `transactionDate`, `amount`, `exchanges`, `quantity`, `unitName`, `attribute` (mahiyet), `idNo`, `nameSurname`, `bankName`, `bankCode`, `isCheck`, `isExcel`, `printStamp`, `printDate`, `createdDate`, `updatedAt`
+
+`documentMode` belge türünü gösterir. Kağıt kayıtlarda `eDocument: null` döner. Elektronik kayıtlarda `eDocument` resmi numara, UUID, ortam, gönderim kabulü, yerel kesinleştirme ve sağlayıcı/GİB rapor durumunu taşır. Gönderim ve dosya işlemleri için [E-gider pusulası](/api-reference/e-gider-pusulasi) sayfasına bakın.
 
 ### Cevap — `200`
 
@@ -44,6 +49,8 @@ Sıralama whitelist'i: `transactionDate`, `createdAt`, `updatedAt`, `amount`. Va
   "data": [
     {
       "id": "6aae79498d76c7a5471ede43",
+      "documentMode": "paper",
+      "eDocument": null,
       "serial": "C",
       "number": "160998",
       "transactionDate": "2026-09-19T11:58:00.000Z",
@@ -105,6 +112,8 @@ curl 'https://api.sarraf.pro/v1/expenses/6aae79498d76c7a5471ede43' \
   "success": true,
   "data": {
     "id": "6aae79498d76c7a5471ede43",
+    "documentMode": "paper",
+    "eDocument": null,
     "serial": "C",
     "number": "160998",
     "transactionDate": "2026-09-19T11:58:00.000Z",

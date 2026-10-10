@@ -17,7 +17,7 @@ Gider pusulası oluşturma uçları, faturadakiyle aynı deseni izler: kalem se�
 </Note>
 
 <Warning>
-  Varsayılan davranış pusulayı **kesinleştirmektir**: seri-sıra numarası tüketilir, yazdırma tarihi yazılır ve stok hareketi oluşur. Kesinleştirilmiş pusula API'den iptal edilemez. Denemelerinizi önce `POST /v1/expenses/preview` (yan etkisiz) ve `isDraft: true` ile yapın.
+  Kağıt belgede varsayılan davranış pusulayı **kesinleştirmektir**: seri-sıra numarası tüketilir, yazdırma tarihi yazılır ve stok hareketi oluşur. E-gider aktif firmada `isDraft: true` zorunludur. Aksi halde kayıt oluşturmadan `422 VERIFICATION_REQUIRED` döner. Elektronik taslak [E-gider pusulası](/api-reference/e-gider-pusulasi) akışıyla SMS kodu kullanılarak gönderilir. Eski belgeler ve taslaklar türünü korur.
 </Warning>
 
 ## `GET /v1/expenses/templates` — kalem şablonları
@@ -184,10 +184,12 @@ curl -X POST 'https://api.sarraf.pro/v1/expenses' \
 | `transactionDate` | her ikisi | Pusula tarihi |
 | `serial`, `number` | serbest | Verilmezse firma ayarından üretilir |
 | `bankName`, `invoiceNo`, `isSwap` | serbest | Ödeme bankası, takas fatura numaraları, takas bilgisi |
-| `isDraft` | her ikisi | `true` ise pusula **kesinleştirilmez**; taslak kayıt olarak kalır |
-| `allowDuplicate` | her ikisi | `true` ise mükerrer kaydı kontrolü atlanır |
+| `isDraft` | her ikisi | `true` ise yerel taslak oluşur. E-gider aktif firmada `true` zorunludur |
+| `allowDuplicate` | her ikisi | Aynı gün/kimlik/tutar kontrolünü atlar. Aynı banka hareketinden ikinci elektronik taslağa izin vermez |
 
 Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir.
+
+Oluşturma cevabında `documentMode` ve `eDocument` gönderim özeti bulunur. Elektronik gönderimde genel müşteri bilgileri kullanılmaz. Gerçek satıcı adresini, il/ilçe bilgisini ve cep telefonunu `customerInfo` içinde gönderin veya kayıtlı müşteri bilgisini tamamlayın. `serial` ve `number` yerel sıra bilgisidir; resmi numara `eDocument.number` alanına gönderim kabulünde yazılır.
 
 ### Cevap — `201`
 
@@ -196,6 +198,8 @@ Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir.
   "success": true,
   "data": {
     "id": "6ab2f0c21ae2463211cf4321",
+    "documentMode": "paper",
+    "eDocument": null,
     "source": "manual",
     "sourceId": null,
     "isDraft": false,
@@ -227,6 +231,8 @@ Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir.
 | Banka hareketi resmileştirilmiş | 409 | `CONFLICT` |
 | Aynı gün, aynı kimlik ve aynı tutar ile pusula oluşturulmuş | 409 | `CONFLICT` — `details[0].existingId`; bilinçli tekrar için `allowDuplicate: true` |
 | Gider pusulası ayarı eksik/pasif, TCKN/VKN doğrulanamadı, alıcı e-fatura mükellefi, kalem hesaplanamadı | 422 | `VALIDATION_FAILED` |
+| E-gider aktif firmada `isDraft:true` gönderilmemiş | 422 | `VERIFICATION_REQUIRED` — kayıt oluşturulmaz |
+| Aynı banka hareketi başka bir elektronik taslağa ayrılmış | 409 | `E_DOCUMENT_SOURCE_CONFLICT` |
 
 <Note>
   Firmanızın ayarına göre TCKN/VKN doğrulaması zorunlu olabilir; ayrıca e-fatura mükellefi olan alıcılar için gider pusulası kesilmesi engellenebilir. Bu kurallar panel ile aynıdır.
@@ -234,7 +240,7 @@ Kaynağa ait olmayan bir alan gönderilirse istek `400` ile reddedilir.
 
 ## `DELETE /v1/expenses/{id}` — taslak pusulanın iptali
 
-Kesinleştirilmemiş gider pusulasını siler. **Kesinleştirilmiş pusula bu uçtan silinemez** ve `409` döner; kesinleştirilmiş kayıtların iptali panelden yürütülür.
+Kesinleştirilmemiş gider pusulasını siler. **Kesinleştirilmiş pusula bu uçtan silinemez** ve `409` döner. Kağıt belgede mevcut panel iptali kullanılır. Elektronik belgede sağlayıcı taslağı da kaldırılır; gönderilmiş veya sonucu belirsiz belge silinemez. Elektronik iptal sağlayıcı portalından yürütülür.
 
 Silme sırasında pusulaya bağlı giden banka hareketi yeniden işlenebilir duruma döner.
 
