@@ -5,6 +5,11 @@ description: "Kalem şablonu seçin, tutarı hesaplatın, faturayı oluşturup g
 
 Fatura oluşturma uçları, SarrafPro'nun kendi fatura motorunu dışarıya açar: kalemler şablona göre hesaplanır, fatura türü (istisna / özel matrah / satış) belirlenir ve belge e-belge servisine gönderilir. Kesilen fatura, aynı anda [Faturalar](/api-reference/faturalar) uçlarında görünür hale gelir.
 
+<Note>
+  Seçtiğiniz şablonun ekstra kalemlerinde fiyatı 0 TL olarak tanımlanan promosyonlar, ön hesaplamada ve faturada bedelsiz satır olarak korunur. Bu satırların miktarı pozitif, fiyatı ve KDV dahil tutarı 0 olur. Sabit miktar tanımı boş veya 0 ise miktar 1 alınır; yüzdeyle hesaplanan bedelsiz kalemlerde de miktar 1 olur. Ana kalem, işçilik ve diğer ücretli kalemler ile fatura toplamı pozitif olmalıdır. Negatif veya geçersiz değerler bedelsiz kalem olarak kabul edilmez.
+  Bedelsiz ekstra kalemler, ana satışla birlikte fatura ve envanter kayıtlarına dahil edilir.
+</Note>
+
 İki kaynak desteklenir:
 
 | Kaynak | Ne zaman kullanılır |
