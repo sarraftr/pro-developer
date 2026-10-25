@@ -1,0 +1,125 @@
+---
+title: "Pavo POS ödeme durumları"
+description: "Kısmi tahsilat, kalan tutar, iptal sonucu ve güvenli tekrar davranışı."
+---
+
+Pavo POS işlemlerinde komutun cihaza iletilmesi, tahsilatın tamamlanması ve satışın kapanması ayrı aşamalardır. SarrafPro POS listesi ve işlem detayı bu aşamaları saklanan ödeme sonuçları üzerinden gösterir.
+
+## E-fatura mükellefiyet sorgusu
+
+API, nihai tüketici dışındaki müşterinin TCKN veya VKN bilgisiyle e-Fatura mükellefiyetini sorgular. Doğrulanmış aktif e-Fatura kaydında satış e-Fatura bilgisiyle hazırlanır. Sorgu tamamlanamazsa mevcut iş kuralı gereği satış e-Arşiv akışıyla devam eder; sorgu belirsizliği tek başına ödemeyi engellemez.
+
+Aynı ödeme isteğini veya komutunu tekrar iletirken kayıtlı müşteri bilgisi korunur. Sorgu belirsizliğini yeni bir ödeme isteği oluşturma gerekçesi olarak kullanmayın.
+
+## Hızlı satışta fiyat kaynağı
+
+Ürün miktarı güncel satış kuru, seçili envanter tanımının saflığı ve birim kurallarıyla hesaplanır. Eski tanımda fiyat kaynağı belirtilmemişse modelin varsayılan altın kaynağı kullanılır. Açıkça seçilmiş farklı kaynak korunur; güncel satış fiyatı bulunamıyorsa ödeme öncesi hesaplama reddedilir.
+
+Bu uyumluluk geçmiş satışları veya mevcut envanter tanımlarını değiştirmez. Cihazdan kur ya da hesaplanmış ürün miktarı göndermeyin; hızlı satışın sunucu hesaplama sonucunu kullanın.
+
+### Kur'a bağlı hızlı satış kalemleri
+
+Sarraf Pos → **Hızlı Satış Tanımları** ekranında bir kalemin fiyat türünü **Kur'a Bağlı Fiyat** seçebilirsiniz. Seçtiğiniz Harem kaleminin satış fiyatı **işçilik dahil tabandır**. Bu fiyata **+TL** veya **+Yüzde** artırım tanımlayabilirsiniz. Yüzde artırım ham Harem satış fiyatından hesaplanır. İsteğe bağlı **Üste Yuvarlama (TL)** alanına tam TL adımı girin; `0` yuvarlamayı kapatır. Artırım sonrasında toplam bu adımın üst katına yuvarlanır. İşçiliği **TL** veya **Yüzde** seçin; yüzde işçilik **yuvarlama sonrası satış toplamından** hesaplanıp içinden ayrılır. Ters yüzde hesabı kullanılmaz. Kalan tutar ürüne gider. Örneğin yuvarlama kapalıyken Harem 10.000 TL, artırım %5, işçilik %2 ise toplam 10.500 TL, işçilik 210 TL, ürün 10.290 TL olur. Artırım ve yuvarlama sıfır olduğunda önceki hesap korunur.
+
+Artırım sonrası fiyat 10.798 TL, yuvarlama adımı 10 TL ise toplam 10.800 TL olur. %2 işçilik 216 TL, ürün 10.584 TL olarak ayrılır. 1, 2, 3, 5, 7, 10, 20 gibi serbest tam TL adımları kullanılabilir; tam kat tutarlar değişmez.
+
+Seçenekler Harem altın/gümüş listesindeki pozitif TL satış fiyatlarıyla sınırlıdır; USD bazlı ONS ve pariteler TL tutarı olarak kullanılamaz. Paneldeki önizlemeyi **Piyasa Fiyatlarını Yenile** ile güncellersiniz. Sepet API'si her yeni hesapta güncel satış fiyatını yeniden okur. Fiyat bulunamazsa sabit veya başka sağlayıcı fiyatına dönülmez. Mevcut sabit fiyatlı kalemler ve fatura tanımları korunur.
+
+Cihaz entegrasyonunda `GET /sales/quick-sale` yanıtındaki `priceType` ve `laborType` alanlarını kullanın. `priceType=exchange` kalemde yalnız `itemId` ile `laborValue` gönderin; bu değer `laborType=amount` için TL tutarı, `laborType=percent` için yüzde oranıdır. `productAmount`, `laborAmount` veya artırım/yuvarlama alanlarını göndermeyin. Artırım, güncel tanımdaki `priceIncreaseType` ve `priceIncreaseValue` üzerinden; yuvarlama da `roundingStep` ile sunucuda çözülür. İşçilik desteklenmiyorsa `laborValue=0` kullanın. Sabit fiyatlı kalemin mevcut ürün ve TL işçilik gövdesi korunur.
+
+`priceAvailable=false` kalemi satışa açmayın. İşçilik tutarı yuvarlama sonrası güncel toplama ulaşırsa ürün tutarı pozitif kalmaz; `quick_sale_labor_exceeds_price` alınır. Yüzde oranı 100’den küçük olmalıdır. Tanım yanıtındaki `defaultProductAmount` işçilik ayrıldıktan sonra kalan ürün, `defaultLaborAmount` ayrılan TL işçiliktir. `defaultTotalAmount` artırım ve yuvarlama sonrası toplam, `exchangePrice` ham Harem fiyatı, `priceIncreaseAmount` yalnız TL artırım, `roundingAmount` yalnız yuvarlama farkıdır. Geçerli ayrıştırma yoksa tutarlar `null` döner. Artırım hesaplanamazsa `quick_sale_price_increase_invalid`; yuvarlama güvenli sayısal hesap sınırını aşarsa `quick_sale_rounding_invalid` alırsınız. Fiyat bulunamadığında `quick_sale_exchange_unavailable`, yeni fiyat sözleşmesini desteklemeyen istekte `quick_sale_pricing_client_required` döner. Eski ve yeni tutar alanlarını birlikte gönderirseniz istek doğrulaması reddedilir. İlk ödeme isteğinde kullanılan fiyat, tanımlı/hesaplanmış artırım, yuvarlama adımı/farkı ve işçilik satışa kaydedilir; aynı `requestId` tekrarında mevcut işlem korunur.
+
+## Cihazda canlı hızlı satış fiyatı
+
+Hızlı Satış kalemlerinin altında işçilik dahil satış toplamı gösterilir. İlk girişte tanım ve başlangıç fiyatları sunucudan alınır. Ekran açıkken mevcut socket bağlantısındaki `marketfeed` olayından Harem satış fiyatı izlenir; artırım, üst katına yuvarlama ve işçilik ayrımı cihazda uygulanır. Fiyatı geçersiz kalemle ödeme başlatılmaz. Miktar ve mali satırlar ile ödeme öncesindeki son hesap sunucuda doğrulanır.
+
+Tanımın `defaultLaborValue` alanı ham TL işçilik veya yüzde oranını korur. Yeni fiyatın HTTP yanıtı veya eski socket olayıyla ezilmesini önleyin. Kur'a bağlı ödeme gövdesi yalnız `itemId` ve `laborValue` taşır; fiyat, artırım ve yuvarlama kuralı gönderilmez. Kaydedilmiş aynı işlem isteği canlı fiyat değişiminde yeniden fiyatlandırılmaz; mevcut `requestId` ve gövde korunur.
+
+### Birden fazla seçim ve adet
+
+**Hızlı Satış Tanımları → Kalem Seçimi** içindeki **Tek Kalem / Birden Fazla Kalem** tercihi `allowMultipleSelection` alanıyla yönetilir. **Birden Fazla Kalem** `true`, **Tek Kalem** `false` değeridir. Yeni ekranda veya bu alanı olmayan eski tanımda varsayılanı açıktır. Mevcut ekranın güncellemesinde alan gönderilmezse kayıtlı tercih korunur; değiştirmek için açıkça `true` veya `false` gönderin. Tek kalem seçiliyse cihaz **Devam** düğmesini göstermez; bir kaleme dokunduğunuzda satış adedini sorup hesap adımına geçer. API, tekli seçimli ekranda birden fazla kalemi `quick_sale_single_selection_required` ile reddeder. Bir kalemin adedi birden fazla olabilir.
+
+Kalem isteğinde `quantity` pozitif güvenli tam sayıdır; verilmezse `1` kabul edilir. Ürün tutarı ve TL işçilik bir adet için, yüzde işçilik birim toplamına uygulanacak oran olarak gönderilir. Harem fiyatı, artırım, yuvarlama ve işçilik önce bir adet için hesaplanır; sonra parasal toplamlar ve miktarlar adetle çarpılır. Sepet toplamında yeniden yuvarlama yapılmaz.
+
+Hesap yanıtındaki `unitProductAmount`, `unitLaborAmount`, `unitTotal` birim değerleri; `productAmount`, `laborAmount`, `total` ve stok miktarları ise adet uygulanmış satır değerlerini gösterir. Ham fiyat, artırım ve yuvarlama metası bir adet için korunur. Adetle geçerli tutar/miktar hesaplanamazsa `quick_sale_quantity_invalid` alınır. Aynı satışın `requestId` değeriyle tekrarında kaydedilmiş fiyat ve adet korunur; yeni bir satış oluşturulmaz.
+
+## Tahsilat özeti
+
+Ödeme sonucu bulunan kayıtlarda `paymentSummary` özeti kullanılır:
+
+| Alan | Açıklama |
+| --- | --- |
+| `available` | Değerlendirilebilen bir ödeme sonucu bulunduğunu belirtir. |
+| `totalAmount` | Satışın toplam tutarı. |
+| `collectedAmount` | Başarılı geri almalar düşüldükten sonraki net tahsilat. |
+| `remainingAmount` | Ödeme kayıtlarından hesaplanan kalan tutar. |
+| `refundedAmount` | Başarılı geri alma kayıtlarından hesaplanan tutar. |
+| `currencyCode` | Tutarların para birimi. |
+| `isPartial` | Net tahsilatın pozitif fakat satış toplamından düşük olduğunu belirtir. |
+| `isIncomplete` | Satışın tamamlanmadığını belirtir. |
+| `requiresReview` | Tutar, para birimi veya ödeme eşlemesinin doğrulanamadığını belirtir. |
+| `isFullyPaid` | Tam tahsilatın desteklenen satış durumu ve tutarlı ödeme kanıtıyla doğrulandığını belirtir. |
+
+Başarısız veya vazgeçilmiş ödeme denemeleri tahsilata eklenmez. Aynı ödemenin birden fazla sonuç dizisinde yer alması ikinci bir tahsilat sayılmaz. Ödeme kimliği sıfırsa bu değer tek başına eşleştirme için kullanılmaz.
+
+Tutar doğrulanamıyorsa `null` döner ve ekranda `-` gösterilir. Sıfır tutar, bilinmeyen tutardan farklıdır. Sağlayıcının kalan tutarı ödeme kayıtlarıyla çelişiyorsa hesaplanan `remainingAmount` esas alınır. Özet ayrıca `paymentCount`, `successfulPaymentCount`, `failedPaymentCount`, `providerRemainingAmount` ve `providerRemainingAmountStale` tanı alanlarını içerebilir.
+
+Örneğin 224.000 TL'lik satışta 200.000 TL başarılı ödeme ve 24.000 TL başarısız deneme varsa net tahsilat 200.000 TL, kalan 24.000 TL gösterilir. Başarısız deneme ikinci tahsilat değildir.
+
+## Kısmi ve tamamlanmamış satış
+
+Pavo'nun `23 — UnCompletedSale` sonucu tam satış onayı oluşturmaz. Yeni kısmi veya doğrulanamayan sonuç `pending` durumunda korunur; stok kesinleştirilmez. İşlem geçmişinde `sale.pending` olayı görülebilir.
+
+Bu kayıtlarda ödeme komutunu yeniden başlatmak ve Core kaydını silmek engellenir. Önceki bir kaydın onaylı görünmesi tek başına tahsilatın tamamlandığını kanıtlamaz; ödeme özeti ayrıca değerlendirilir. Mevcut kayıtlar topluca değiştirilmez.
+
+Ödeme veya mali belge içermeyen kesin başarısızlıkların mevcut güvenli temizlik davranışı korunur. Normal askıdaki satış ile `UnCompletedSale` ayrı değerlendirilir.
+
+Satıştan vazgeçilmiş ve bütün ödeme denemeleri kesin başarısız olan sonuçlar, doğru satış ve komut referanslarıyla doğrulandığında kapanır. Başarısız denemelerin listede bulunması tek başına başarılı tahsilat sayılmaz. Başarılı, kısmi veya belirsiz ödeme içeren sonuçlarda koruma devam eder.
+
+## Bekleme ve güncel durum sorgusu
+
+Sonucu gelmeyen hızlı satış, yalnız 60 saniye geçtiği için otomatik silinmez. Zaman aşımını yeni tahsilat başlatma veya yeni istek kimliği üretme izni olarak kullanmayın. Geç gelen sonuçlar korunur; kapanmış işlem sonradan sonuç alırsa ayrıca inceleme gerekebilir.
+
+İşlem detayındaki **Pavo Durumunu Sorgula** eylemi mevcut satışı sorgular. Yeni tahsilat, iptal veya iade başlatmaz. Uygun ve doğrulanmış sonuçla ödeme ve stok durumu güncellenebilir. Çelişkili ödeme, iptal veya belge sonucunda mevcut mali kayıtlar korunur ve kontrol gereksinimi gösterilir.
+
+Core kaydının silme uygunluğu sunucuda yeniden doğrulanır. Sürenin dolması tek başına silme yetkisi vermez. Ödeme, belge, stok veya devam eden komut nedeniyle silme engellenirse neden ekranda görünür.
+
+## İptal sonucu
+
+İptal komutunun gönderilmiş olması tahsilatın geri alındığı anlamına gelmez. Başarı için doğru işlemle ilişki, sağlayıcı sonucu ve asıl ödeme ile geri alma kayıtlarının tutar/para birimi uyumu doğrulanır. Geçmiş başarısız ödeme denemeleri bu dengeyi bozacak şekilde tahsilat sayılmaz.
+
+Cevabı belirsiz kalan iptal, bekleme süresi dolduğunda yeni bir mali komutla otomatik tekrarlanmaz. Önce güncel durumu sorgulayın. Durum sorgusunda iptal bilgisi görülmesi, tek başına doğrulanmış iptal komutunun ve ödeme geri alma sonucunun yerine geçmez.
+
+İptal hatası, işlem detayında satış hatasından ayrı gösterilir. İptal özeti içindeki `error`, güvenli hata kodu ve açıklamasını; `blockedReason`, işlemin neden kullanılamadığını taşır. `reason` kullanıcının iptal gerekçesidir. Panelde `capabilities.paymentAllowed` ve `capabilities.paymentBlockedReason` tekrar ödeme uygunluğunu belirtir.
+
+Tamamlanmamış satıştan tahsilatı geri alma ve satışın kapanması ayrı doğrulamalar gerektirir. Pavo'nun `23` durumu için desteklenen geri alma geçişi doğrulanmadan otomatik ödeme geri alma uygulanmaz. Core kaydını silmek banka/Pavo tahsilatını iptal etmez.
+
+Bu sayfa POS ekranı ve cihaz entegrasyonundaki durumları açıklar; Dış API v1 kapsamına yeni POS ödeme veya iade ucu eklenmemiştir.
+
+## Cihazda satış ve gönderim durumu
+
+Satış kaydının oluşturulması, komutun iletilmesi ve ödemenin tamamlanması ayrı aşamalardır. **Satış tamamlandı** bilgisi yalnız sunucunun doğruladığı tam tahsilat sonucu için gösterilir. Bekletilen kayıt ödeme başlatmaz. Gönderim başarısızsa mevcut satış kaydı korunur; yeni kayıt açmak yerine aynı işlemi takip edin.
+
+Cihaz satış listesi ve detayları ilgili cihazla sınırlıdır. Firmanın farklı cihazlarına ait satışları SarrafPro panelinden görüntüleyin. Cihazdaki bekleyen satış detayında mali iptal işlemi bulunmaz; mali iptali SarrafPro üzerinden yetkili kullanıcı başlatır. Satış oluşmamış teknik kayıtların güvenli temizliği ayrı değerlendirilir.
+
+Satış Yap akışındaki 12.000 TL üstü müşteri zorunluluğu ile Hızlı Satış'ın 30.000 TL ve üzeri müşteri zorunluluğu ayrı kurallardır. Kimlik nedeniyle reddedilen ve henüz oluşturulmamış isteği güncel müşteri bilgileriyle yeniden hazırlayabilirsiniz. Sunucuda oluşturulmuş veya sonucu bilinmeyen bir isteğin içeriğini değiştirerek tekrar göndermeyin.
+
+## Temel müşteri kartı
+
+Yeni ve başarılı tam satışın geçerli TCKN/VKN bilgileriyle eksik temel müşteri kartı kaydedilir. Nihai tüketici için kart oluşturulmaz. Mevcut müşteri bilgileri değiştirilmez. Temel kart kaydı müşteri tanı, kimlik belgesi veya onay işlemlerinin yerine geçmez.
+
+Müşteri kartı kaydedilemezse tamamlanmış ödeme başarısız sayılmaz. İşlem detayındaki ayrı bildirimi kontrol edin ve gerekiyorsa Müşteri Yönetimi üzerinden tamamlayın. Geçmiş satışlar kendiliğinden taranıp müşteri kartına dönüştürülmez.
+
+## Belge ve envanter kontrolü
+
+Mali belgenin güvenli görüntüleme bağlantısı varsa işlem detayındaki **Belgeyi görüntüle** düğmesini kullanın. Bağlantı henüz oluşmamışsa veya kullanılamıyorsa detayda nedeni gösterilir. Belge görüntüleme, ödeme özeti hesaplanabilmesinden ayrı değerlendirilir.
+
+Stok kaydı tamamlanmadan önce bağlı stok hareketlerinin miktar, kart, şube ve tarih bilgileri doğrulanır. Önceki bir kaydın tamamlandı işaretiyle gerçek hareketleri uyuşmuyorsa işlem detayında **Kontrol Gerekli** görünür. Envanter raporunu satışın şube ve tarih kapsamıyla kontrol edin. Detayı açmak geçmiş stok hareketlerini onarmaz.
+
+## Pavo raporuyla karşılaştırma
+
+Sarraf Pos ekranındaki **Mutabakat** bölümünü açın. **Rapor Karşılaştır** aksiyonundan terminali, tarih aralığını ve Pavo satış raporunu JSON olarak seçin. Ekran en fazla 31 günlük, 1.000 satış içeren ve 1 MB büyüklüğündeki raporları karşılaştırır.
+
+Sonuç listesi eşleşen satışları, yalnız raporda veya SarrafPro'da bulunan kayıtları, sonucu bekleyen satışları ve stok incelemesi gerekenleri ayırır. Güçlü satış referansı eksik veya çelişkiliyse inceleme gerekir. Aynı tutar ve tarih tek başına bir satışın eşleştiğini kanıtlamaz. Yüklenen raporun tamlığı ayrıca kontrol edilmelidir.
+
+Karşılaştırma satış veya stok kaydı oluşturmaz, kayıt onarmaz ve ödeme başlatmaz. Raporda bulunmayan bir kayıt için doğrudan yeni tahsilat başlatmayın; ilgili işlem detayını inceleyin.

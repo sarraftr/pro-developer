@@ -66,6 +66,12 @@
             "pages": [
               "api-reference/kmts-dogrulamalari"
             ]
+          },
+          {
+            "group": "POS Entegrasyonu",
+            "pages": [
+              "guides/pavo-pos-odeme-durumlari"
+            ]
           }
         ]
       },
