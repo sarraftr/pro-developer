@@ -5,6 +5,12 @@ description: "Kısmi tahsilat, kalan tutar, iptal sonucu ve güvenli tekrar davr
 
 Pavo POS işlemlerinde komutun cihaza iletilmesi, tahsilatın tamamlanması ve satışın kapanması ayrı aşamalardır. SarrafPro POS listesi ve işlem detayı bu aşamaları saklanan ödeme sonuçları üzerinden gösterir.
 
+## Sonuç teslimi ve ödeme onayı
+
+Ödeme sonucunun sunucuya ulaşması, tahsilatın doğrulandığı anlamına gelmez. Alınan sonuç doğru cihaz, komut ve satışla ilişkilendirildikten sonra ödeme ve stok kurallarıyla değerlendirilir. Sonuç işlenirken aynı satış için yeni ödeme başlatmayın.
+
+Aynı sonucun farklı iletişim kanallarından veya yeniden deneme sonucunda ulaşması ikinci bir tahsilat ya da stok hareketi oluşturmamalıdır. Teslim onayını ödeme başarı durumu olarak kullanmayın. Sonucu belirsiz satışta mevcut kayıt üzerinden durum sorgulayın; yeni satış veya yeni ödeme kimliği oluşturmayın.
+
 ## E-fatura mükellefiyet sorgusu
 
 API, nihai tüketici dışındaki müşterinin TCKN veya VKN bilgisiyle e-Fatura mükellefiyetini sorgular. Doğrulanmış aktif e-Fatura kaydında satış e-Fatura bilgisiyle hazırlanır. Sorgu tamamlanamazsa mevcut iş kuralı gereği satış e-Arşiv akışıyla devam eder; sorgu belirsizliği tek başına ödemeyi engellemez.
@@ -102,9 +108,13 @@ Satış kaydının oluşturulması, komutun iletilmesi ve ödemenin tamamlanmas�
 
 Cihaz satış listesi ve detayları ilgili cihazla sınırlıdır. Firmanın farklı cihazlarına ait satışları SarrafPro panelinden görüntüleyin. Cihazdaki bekleyen satış detayında mali iptal işlemi bulunmaz; mali iptali SarrafPro üzerinden yetkili kullanıcı başlatır. Satış oluşmamış teknik kayıtların güvenli temizliği ayrı değerlendirilir.
 
-Satış Yap akışındaki 12.000 TL üstü müşteri zorunluluğu ile Hızlı Satış'ın 30.000 TL ve üzeri müşteri zorunluluğu ayrı kurallardır. Kimlik nedeniyle reddedilen ve henüz oluşturulmamış isteği güncel müşteri bilgileriyle yeniden hazırlayabilirsiniz. Sunucuda oluşturulmuş veya sonucu bilinmeyen bir isteğin içeriğini değiştirerek tekrar göndermeyin.
+Satış Yap ve Hızlı Satış müşteri zorunluluğunu aynı sunucu kuralından alır. Cihazın doğrulanmış uyumluluk kuralı genel bir mevzuat sınırı olarak değerlendirilmez. Kimlik nedeniyle reddedilen ve henüz oluşturulmamış isteği güncel müşteri bilgileriyle yeniden hazırlayabilirsiniz. Sunucuda oluşturulmuş veya sonucu bilinmeyen bir isteğin içeriğini değiştirerek tekrar göndermeyin.
 
 ## Temel müşteri kartı
+
+Hızlı Satış'ın **3. adımında** TCKN/VKN girip **Sonraki** düğmesine basın. Firmanızda müşteri kaydı varsa bilgileri **4. adım Satış Özeti** ekranında gösterilir. Kayıt yoksa müşteri bilgi formunu tamamlayıp özete geçin. Ödemeyi bu özet ekranından başlatın. Farklı bir kimliğe geçtiğinizde önceki müşteri ve onay temizlenir. Sorgu hatasında kayıt olmadığı varsayılmaz; sorguyu yeniden deneyin.
+
+Boş il, ilçe ve adres, **Konfigürasyon → Fatura Otomasyon Ayarları** bölümündeki varsayılanlarla arka planda tamamlanır. Farklı bir il seçtiyseniz o ile ait ilçeyi ayrıca seçin. Varsayılanlarda da eksik olan adres bilgisini ödeme öncesinde tamamlayın. Bu doldurma işlemi mevcut müşteri kartını değiştirmez.
 
 Yeni ve başarılı tam satışın geçerli TCKN/VKN bilgileriyle eksik temel müşteri kartı kaydedilir. Nihai tüketici için kart oluşturulmaz. Mevcut müşteri bilgileri değiştirilmez. Temel kart kaydı müşteri tanı, kimlik belgesi veya onay işlemlerinin yerine geçmez.
 
@@ -123,3 +133,15 @@ Sarraf Pos ekranındaki **Mutabakat** bölümünü açın. **Rapor Karşılaşt�
 Sonuç listesi eşleşen satışları, yalnız raporda veya SarrafPro'da bulunan kayıtları, sonucu bekleyen satışları ve stok incelemesi gerekenleri ayırır. Güçlü satış referansı eksik veya çelişkiliyse inceleme gerekir. Aynı tutar ve tarih tek başına bir satışın eşleştiğini kanıtlamaz. Yüklenen raporun tamlığı ayrıca kontrol edilmelidir.
 
 Karşılaştırma satış veya stok kaydı oluşturmaz, kayıt onarmaz ve ödeme başlatmaz. Raporda bulunmayan bir kayıt için doğrudan yeni tahsilat başlatmayın; ilgili işlem detayını inceleyin.
+
+## SarrafPOS uygulamasında durum takibi
+
+Güncel SarrafPOS sürümünde, işlem kimliği alınmış satışın sonucu uygulama yeniden açıldığında da kontrol edilir. Sunucunun henüz bekliyor dediği ödeme, kısa aralıklarla sınırlı sayıda yeniden sorgulanır. Bu kontrol yeni ödeme, satış gönderimi veya iptal başlatmaz. Kısmi, belirsiz veya inceleme gerektiren işlem tam ödeme olarak gösterilmez.
+
+Kayıt kontrolünü yeniden yaptığınızda ve farklı bir ortama geçtiğinizde önceki oturumun satış tanımları kullanılmaz. Bekleyen ödeme bilgisi bu nedenle silinmez. Hızlı Satış tanımları açık kayıt oturumunda önceden yüklenir; mevcut kalemler gösterilirken yenileme arka planda yapılır.
+
+## Cihazdan güvenli tanılama
+
+**Ayarlar → Tanılama** ekranında bağlantı ve işlem yetkisi durumunu, teslim bekleyen sonuç sayısını ve son isteklerin aşama, süre ve hata sınıfını görüntüleyin. Bağlantının açık olması tek başına işlem yetkisinin doğrulandığını göstermez. Eski servis bağlantısında yetki bildirimi desteklenmiyorsa bu durum ayrıca belirtilir.
+
+Destek ekibiyle paylaşmak istediğinizde **Kopyala** düğmesini kullanın. Tanılama çıktısı müşteri bilgisi, kart verisi, ödeme gövdesi veya erişim anahtarı içermez. Ekranı açmak sunucuya yeni bir ödeme komutu göndermez.
