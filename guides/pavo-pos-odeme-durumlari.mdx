@@ -9,7 +9,7 @@ Pavo POS işlemlerinde komutun cihaza iletilmesi, tahsilatın tamamlanması ve s
 
 Ödeme sonucunun sunucuya ulaşması, tahsilatın doğrulandığı anlamına gelmez. Alınan sonuç doğru cihaz, komut ve satışla ilişkilendirildikten sonra ödeme ve stok kurallarıyla değerlendirilir. Sonuç işlenirken aynı satış için yeni ödeme başlatmayın.
 
-Aynı sonucun farklı iletişim kanallarından veya yeniden deneme sonucunda ulaşması ikinci bir tahsilat ya da stok hareketi oluşturmamalıdır. Teslim onayını ödeme başarı durumu olarak kullanmayın. Sonucu belirsiz satışta mevcut kayıt üzerinden durum sorgulayın; yeni satış veya yeni ödeme kimliği oluşturmayın.
+Aynı sonucun farklı iletişim kanallarından veya yeniden deneme sonucunda ulaşması ikinci bir tahsilat ya da stok hareketi oluşturmamalıdır. Teslim onayını ödeme başarı durumu olarak kullanmayın. Sonucu belirsiz mevcut tahsilatı otomatik yeniden başlatmayın; kayıt üzerinden takip edin. SarrafPOS 1.0.16, bu takibi arka planda koruyarak kullanıcının yeni ve ayrı bir satış başlatmasına izin verir.
 
 ## E-fatura mükellefiyet sorgusu
 
@@ -21,7 +21,17 @@ Aynı ödeme isteğini veya komutunu tekrar iletirken kayıtlı müşteri bilgis
 
 Ürün miktarı güncel satış kuru, seçili envanter tanımının saflığı ve birim kurallarıyla hesaplanır. Eski tanımda fiyat kaynağı belirtilmemişse modelin varsayılan altın kaynağı kullanılır. Açıkça seçilmiş farklı kaynak korunur; güncel satış fiyatı bulunamıyorsa ödeme öncesi hesaplama reddedilir.
 
-Bu uyumluluk geçmiş satışları veya mevcut envanter tanımlarını değiştirmez. Cihazdan kur ya da hesaplanmış ürün miktarı göndermeyin; hızlı satışın sunucu hesaplama sonucunu kullanın.
+Bu uyumluluk geçmiş satışları veya mevcut envanter tanımlarını değiştirmez. Mevcut hesaplama ve işlem oluşturma uçlarında cihazdan kur ya da hesaplanmış ürün miktarı göndermeyin; sunucu hesaplama sonucunu kullanın. Doğrudan cihaz ödemesini destekleyen sürümün ayrı sonuç sözleşmesini aşağıdaki bölümden izleyin.
+
+### Cihazdan doğrudan ödeme
+
+SarrafPOS 1.0.15 geliştirme sürümünde yeni **Hızlı Satış** ve **Satış** ödemesi, cihazdaki değişmez kayıt sonrasında mevcut Pavo ödeme ekranını doğrudan açar. Ödeme düğmesi sunucudan komut dönüşünü beklemez. Önce aktivasyonu ve satış tanımlarının eşitlenmesini tamamlayın. Normal Satış'ın ön hesaplama/müşteri sorgusu ile daha önce bekletilmiş satışın gönderim yolu korunur.
+
+Gerçek Pavo sonucu ve satış sırasında kullanılan fiyat/müşteri bilgileri birlikte teslim edilir. Uygulama tamamlanmış satış durumunu, para birimini ve başarılı ödeme toplamını birlikte doğrularsa ürün listesine döner. Sunucuya teslim henüz tamamlanmadıysa sonuç cihazda korunur ve bağlantı geldiğinde aynı işlem olarak aktarılır. **Ayarlar → Tanılama** bölümünde teslim bekleyen sonuç sayısını izleyin. Bu bekleme yeni bir tahsilat başlatma nedeni değildir. Kısmi veya çelişkili ödeme başarı sayılmaz; sunucuda henüz kayıt bulunmaması da cihazda ödemenin başlamadığı anlamına gelmez.
+
+Bu bölüm yeni sürümün davranışını açıklar; fiziksel cihaz kabulü ve canlıya alınması ayrıca doğrulanır. Dış API v1'e yeni ödeme veya iade ucu eklenmez.
+
+SarrafPOS 1.0.16 geliştirme sürümünde, Pavo'dan dönünce önceki veya belirsiz sonuç satış ekranını kilitlemez. Sonuç ve teslim takibi korunurken yeni satış başlatabilirsiniz. Eski komut otomatik tekrarlanmaz; geç eski cevap yeni sepetinizi sıfırlamaz. Ödeme yapılmadan **Satıştan Vazgeç** sonucunda satış numarası bulunması tek başına inceleme gerekçesi değildir. Kısmi veya çelişkili sonuç mali olarak ayrıca takip edilir; ekranın serbest olması önceki ödemenin başarılı veya iptal edildiği anlamına gelmez.
 
 ### Kur'a bağlı hızlı satış kalemleri
 
@@ -37,13 +47,15 @@ Cihaz entegrasyonunda `GET /sales/quick-sale` yanıtındaki `priceType` ve `labo
 
 ## Cihazda canlı hızlı satış fiyatı
 
-Hızlı Satış kalemlerinin altında işçilik dahil satış toplamı gösterilir. İlk girişte tanım ve başlangıç fiyatları sunucudan alınır. Ekran açıkken mevcut socket bağlantısındaki `marketfeed` olayından Harem satış fiyatı izlenir; artırım, üst katına yuvarlama ve işçilik ayrımı cihazda uygulanır. Fiyatı geçersiz kalemle ödeme başlatılmaz. Miktar ve mali satırlar ile ödeme öncesindeki son hesap sunucuda doğrulanır.
+Hızlı Satış kalemlerinin altında işçilik dahil satış toplamı gösterilir. İlk tanım ve başlangıç fiyatları sunucudan alınır. Ekran açıkken mevcut socket bağlantısındaki `marketfeed` olayından Harem satış fiyatı izlenir; artırım, üst katına yuvarlama ve işçilik ayrımı cihazda uygulanır. 1.0.15, son geçerli fiyatı ekrana yeniden girişte ve bağlantı/yenileme hatasında korur. Başlıktaki yenile simgesiyle tekrar sorgulayabilirsiniz. Henüz hiç fiyat alınmamış kalem için tutar üretilmez. Yeni cihaz ödemesinde eşitlenmiş hesap kuralları kullanılır; sunucu gerçek sonuçla gelen mali hesabı aynı fiyat üzerinden doğrular.
 
 Tanımın `defaultLaborValue` alanı ham TL işçilik veya yüzde oranını korur. Yeni fiyatın HTTP yanıtı veya eski socket olayıyla ezilmesini önleyin. Kur'a bağlı ödeme gövdesi yalnız `itemId` ve `laborValue` taşır; fiyat, artırım ve yuvarlama kuralı gönderilmez. Kaydedilmiş aynı işlem isteği canlı fiyat değişiminde yeniden fiyatlandırılmaz; mevcut `requestId` ve gövde korunur.
 
 ### Birden fazla seçim ve adet
 
 **Hızlı Satış Tanımları → Kalem Seçimi** içindeki **Tek Kalem / Birden Fazla Kalem** tercihi `allowMultipleSelection` alanıyla yönetilir. **Birden Fazla Kalem** `true`, **Tek Kalem** `false` değeridir. Yeni ekranda veya bu alanı olmayan eski tanımda varsayılanı açıktır. Mevcut ekranın güncellemesinde alan gönderilmezse kayıtlı tercih korunur; değiştirmek için açıkça `true` veya `false` gönderin. Tek kalem seçiliyse cihaz **Devam** düğmesini göstermez; bir kaleme dokunduğunuzda satış adedini sorup hesap adımına geçer. API, tekli seçimli ekranda birden fazla kalemi `quick_sale_single_selection_required` ile reddeder. Bir kalemin adedi birden fazla olabilir.
+
+**Hızlı Satış Tanımları → Özeti Atla** seçeneğini açarsanız müşteri seçimi veya bilgileri tamamlanınca 4. adım Satış Özeti gösterilmeden ödeme başlar. Kapalıysa mevcut özet ekranını kullanırsınız. `skipSummary` varsayılan `false` değerindedir; eski tanımlar kendiliğinden değişmez. Müşteri zorunluluğu, güncel fiyat ve güvenli ödeme kontrolleri her iki durumda uygulanır. Bu seçeneği destekleyen güncel SarrafPOS sürümünü kullanın.
 
 Kalem isteğinde `quantity` pozitif güvenli tam sayıdır; verilmezse `1` kabul edilir. Ürün tutarı ve TL işçilik bir adet için, yüzde işçilik birim toplamına uygulanacak oran olarak gönderilir. Harem fiyatı, artırım, yuvarlama ve işçilik önce bir adet için hesaplanır; sonra parasal toplamlar ve miktarlar adetle çarpılır. Sepet toplamında yeniden yuvarlama yapılmaz.
 
@@ -104,15 +116,17 @@ Bu sayfa POS ekranı ve cihaz entegrasyonundaki durumları açıklar; Dış API 
 
 ## Cihazda satış ve gönderim durumu
 
-Satış kaydının oluşturulması, komutun iletilmesi ve ödemenin tamamlanması ayrı aşamalardır. **Satış tamamlandı** bilgisi yalnız sunucunun doğruladığı tam tahsilat sonucu için gösterilir. Bekletilen kayıt ödeme başlatmaz. Gönderim başarısızsa mevcut satış kaydı korunur; yeni kayıt açmak yerine aynı işlemi takip edin.
+Satış kaydının oluşturulması, komutun iletilmesi ve ödemenin tamamlanması ayrı aşamalardır. **Satış tamamlandı** bilgisi doğrulanmış tam tahsilat için gösterilir. 1.0.15 yeni cihaz ödemesinde bu doğrulamayı gerçek Pavo sonucundan yapabilir; sunucuya teslim arka planda devam eder. Bu bildirim sunucudaki stok işleminin de tamamlandığı anlamına gelmez. Bekletilen kayıt ödeme başlatmaz. Gönderim başarısızsa mevcut satış kaydı korunur; yeni kayıt açmak yerine aynı işlemi takip edin.
 
 Cihaz satış listesi ve detayları ilgili cihazla sınırlıdır. Firmanın farklı cihazlarına ait satışları SarrafPro panelinden görüntüleyin. Cihazdaki bekleyen satış detayında mali iptal işlemi bulunmaz; mali iptali SarrafPro üzerinden yetkili kullanıcı başlatır. Satış oluşmamış teknik kayıtların güvenli temizliği ayrı değerlendirilir.
 
-Satış Yap ve Hızlı Satış müşteri zorunluluğunu aynı sunucu kuralından alır. Cihazın doğrulanmış uyumluluk kuralı genel bir mevzuat sınırı olarak değerlendirilmez. Kimlik nedeniyle reddedilen ve henüz oluşturulmamış isteği güncel müşteri bilgileriyle yeniden hazırlayabilirsiniz. Sunucuda oluşturulmuş veya sonucu bilinmeyen bir isteğin içeriğini değiştirerek tekrar göndermeyin.
+Hızlı Satış müşteri zorunluluğunu güncel sunucu hesabından alır. Toplam **36.000 TL ve üzerindeyse** gerçek TCKN/VKN zorunludur. Normal Satış kendi mevcut müşteri kuralını kullanır. Bu uygulama eşiklerini genel mevzuat veya sağlayıcı limiti olarak değerlendirmeyin. Kimlik nedeniyle reddedilen ve henüz oluşturulmamış isteği güncel müşteri bilgileriyle yeniden hazırlayabilirsiniz. Sunucuda oluşturulmuş veya sonucu bilinmeyen bir isteğin içeriğini değiştirerek tekrar göndermeyin.
 
 ## Temel müşteri kartı
 
-Hızlı Satış'ın **3. adımında** TCKN/VKN girip **Sonraki** düğmesine basın. Firmanızda müşteri kaydı varsa bilgileri **4. adım Satış Özeti** ekranında gösterilir. Kayıt yoksa müşteri bilgi formunu tamamlayıp özete geçin. Ödemeyi bu özet ekranından başlatın. Farklı bir kimliğe geçtiğinizde önceki müşteri ve onay temizlenir. Sorgu hatasında kayıt olmadığı varsayılmaz; sorguyu yeniden deneyin.
+**Hızlı Satış → Ürün Seç → Sepeti Doğrula → Devam** sonrasında toplam 36.000 TL altındaysa sepet üzerinde açılan kısa pencereden **Müşteri Bilgisi Gir / Nihai Müşteri** seçimini yapın. Nihai Müşteri seçimi, **Özeti Atla** kapalıysa satış özetine; açıksa doğrudan ödemeye geçirir. Müşteri Bilgisi Gir seçeneğinde TCKN paylaşılmadan da ad soyad, iletişim ve adres girilebilir; verilen bilgiler satışta korunur. Kimlik paylaşılmayan farklı kişiler aynı müşteri kartında birleştirilmez.
+
+Gerçek TCKN/VKN girip **Sonraki** düğmesine bastığınızda firmanızdaki müşteri kaydı sorgulanır. Kayıt yoksa veya zorunlu bilgiler eksikse formu tamamlayın. **Özeti Atla** kapalıyken bilgileri **4. adım Satış Özeti** ekranında görüp ödemeyi başlatırsınız; açıkken geçerli müşteri tamamlanınca ödeme doğrudan başlar. Toplam 36.000 TL ve üzerindeyse doğrudan zorunlu gerçek kimlik adımı açılır. Ödeme öncesi güncel fiyat toplamı bu eşiğe ulaşırsa müşteri bilgilerini tamamlamanız istenir. Farklı bir kimliğe geçtiğinizde kayıtlı müşterinin önceki bilgileri ve onayı temizlenir. Sorgu hatasında kayıt olmadığı varsayılmaz; sorguyu yeniden deneyin.
 
 Boş il, ilçe ve adres, **Konfigürasyon → Fatura Otomasyon Ayarları** bölümündeki varsayılanlarla arka planda tamamlanır. Farklı bir il seçtiyseniz o ile ait ilçeyi ayrıca seçin. Varsayılanlarda da eksik olan adres bilgisini ödeme öncesinde tamamlayın. Bu doldurma işlemi mevcut müşteri kartını değiştirmez.
 
