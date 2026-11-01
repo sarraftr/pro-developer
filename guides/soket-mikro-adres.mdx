@@ -1,0 +1,17 @@
+---
+title: "Mikro aktarımında varsayılan adres"
+description: "Mikro V15 ve V16 aktarımında fatura ve gider pusulası adreslerinin boşluk, satır sonu veya HTML içeriğiyle boş kalması durumunda kullanılan varsayılanlar."
+---
+
+Soket Aktarım bölümündeki Mikro V15 ve V16 gönderimlerinde adres bilgisi, güncel geliştirme kaynaklarında aktarım hazırlanırken kontrol edilir. Boş veya yalnız görünmez içerik taşıyan adresler için firmanızın varsayılan adresi kullanılır. Tekli ve toplu aktarım aynı kuralı uygular.
+
+## Varsayılan adresi belirleyin
+
+- Faturalar için **Konfigürasyon → Fatura Otomasyon Ayarları** bölümündeki adresi kullanın.
+- Gider pusulaları için **Konfigürasyon → Gider Pusulası Ayarları** bölümündeki adresi kullanın. Bu adres de boşsa Fatura Otomasyon adresi esas alınır.
+
+## Adresin boş sayıldığı durumlar
+
+Yalnız boşluk, Enter, Tab, görünmez Unicode karakterleri, HTML etiketleri veya `&nbsp;` gibi boşluk kodları içeren değerler adres sayılmaz. Anlamlı metin içeren adres düz metin olarak korunur. Varsayılan alanlar da boşsa önce ayarlardaki adresi tamamlayın.
+
+Bu hazırlık kayıtlı müşteri, fatura veya gider pusulasını değiştirmez. Aktarım ekranından gönderilecek adresi kontrol edip gönderimi başlatın. Adres hazırlığının tamamlanması, belgenin Mikro'ya aktarıldığı anlamına gelmez.

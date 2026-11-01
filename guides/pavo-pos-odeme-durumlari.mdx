@@ -65,18 +65,18 @@ Hesap yanıtındaki `unitProductAmount`, `unitLaborAmount`, `unitTotal` birim de
 
 Ödeme sonucu bulunan kayıtlarda `paymentSummary` özeti kullanılır:
 
-| Alan | Açıklama |
-| --- | --- |
-| `available` | Değerlendirilebilen bir ödeme sonucu bulunduğunu belirtir. |
-| `totalAmount` | Satışın toplam tutarı. |
-| `collectedAmount` | Başarılı geri almalar düşüldükten sonraki net tahsilat. |
-| `remainingAmount` | Ödeme kayıtlarından hesaplanan kalan tutar. |
-| `refundedAmount` | Başarılı geri alma kayıtlarından hesaplanan tutar. |
-| `currencyCode` | Tutarların para birimi. |
-| `isPartial` | Net tahsilatın pozitif fakat satış toplamından düşük olduğunu belirtir. |
-| `isIncomplete` | Satışın tamamlanmadığını belirtir. |
-| `requiresReview` | Tutar, para birimi veya ödeme eşlemesinin doğrulanamadığını belirtir. |
-| `isFullyPaid` | Tam tahsilatın desteklenen satış durumu ve tutarlı ödeme kanıtıyla doğrulandığını belirtir. |
+| Alan              | Açıklama                                                                                    |
+| ----------------- | ------------------------------------------------------------------------------------------- |
+| `available`       | Değerlendirilebilen bir ödeme sonucu bulunduğunu belirtir.                                  |
+| `totalAmount`     | Satışın toplam tutarı.                                                                      |
+| `collectedAmount` | Başarılı geri almalar düşüldükten sonraki net tahsilat.                                     |
+| `remainingAmount` | Ödeme kayıtlarından hesaplanan kalan tutar.                                                 |
+| `refundedAmount`  | Başarılı geri alma kayıtlarından hesaplanan tutar.                                          |
+| `currencyCode`    | Tutarların para birimi.                                                                     |
+| `isPartial`       | Net tahsilatın pozitif fakat satış toplamından düşük olduğunu belirtir.                     |
+| `isIncomplete`    | Satışın tamamlanmadığını belirtir.                                                          |
+| `requiresReview`  | Tutar, para birimi veya ödeme eşlemesinin doğrulanamadığını belirtir.                       |
+| `isFullyPaid`     | Tam tahsilatın desteklenen satış durumu ve tutarlı ödeme kanıtıyla doğrulandığını belirtir. |
 
 Başarısız veya vazgeçilmiş ödeme denemeleri tahsilata eklenmez. Aynı ödemenin birden fazla sonuç dizisinde yer alması ikinci bir tahsilat sayılmaz. Ödeme kimliği sıfırsa bu değer tek başına eşleştirme için kullanılmaz.
 
@@ -104,6 +104,10 @@ Core kaydının silme uygunluğu sunucuda yeniden doğrulanır. Sürenin dolmas�
 
 ## İptal sonucu
 
+SarrafPOS 1.0.17 geliştirme sürümünde **Satışlar → Satış detayı → Satışı İptal Et** yolunu kullanabilirsiniz. İşlem onayından sonra Pavo iptal ekranını tamamlayın. Aksiyon yalnız iptale uygun, onaylı ve stok kaydı tamamlanmış kendi cihaz satışınızda görünür. Cihaz bağlantısı gerekir; bu özellik çevrimdışı iptal başlatmaz.
+
+**İptal sonucu bekleniyor** sırasında uygulama sonucu takip eder. **Durumu Kontrol Et** yeni iptal komutu göndermez. İptal isteğinin kabul edilmesini tamamlanmış iptal saymayın; doğrulanmış sonucu bekleyin. Önceki iptalin takibi yeni ve ayrı Hızlı Satış başlatmanızı engellemez.
+
 İptal komutunun gönderilmiş olması tahsilatın geri alındığı anlamına gelmez. Başarı için doğru işlemle ilişki, sağlayıcı sonucu ve asıl ödeme ile geri alma kayıtlarının tutar/para birimi uyumu doğrulanır. Geçmiş başarısız ödeme denemeleri bu dengeyi bozacak şekilde tahsilat sayılmaz.
 
 Cevabı belirsiz kalan iptal, bekleme süresi dolduğunda yeni bir mali komutla otomatik tekrarlanmaz. Önce güncel durumu sorgulayın. Durum sorgusunda iptal bilgisi görülmesi, tek başına doğrulanmış iptal komutunun ve ödeme geri alma sonucunun yerine geçmez.
@@ -118,7 +122,7 @@ Bu sayfa POS ekranı ve cihaz entegrasyonundaki durumları açıklar; Dış API 
 
 Satış kaydının oluşturulması, komutun iletilmesi ve ödemenin tamamlanması ayrı aşamalardır. **Satış tamamlandı** bilgisi doğrulanmış tam tahsilat için gösterilir. 1.0.15 yeni cihaz ödemesinde bu doğrulamayı gerçek Pavo sonucundan yapabilir; sunucuya teslim arka planda devam eder. Bu bildirim sunucudaki stok işleminin de tamamlandığı anlamına gelmez. Bekletilen kayıt ödeme başlatmaz. Gönderim başarısızsa mevcut satış kaydı korunur; yeni kayıt açmak yerine aynı işlemi takip edin.
 
-Cihaz satış listesi ve detayları ilgili cihazla sınırlıdır. Firmanın farklı cihazlarına ait satışları SarrafPro panelinden görüntüleyin. Cihazdaki bekleyen satış detayında mali iptal işlemi bulunmaz; mali iptali SarrafPro üzerinden yetkili kullanıcı başlatır. Satış oluşmamış teknik kayıtların güvenli temizliği ayrı değerlendirilir.
+Cihaz satış listesi ve detayları ilgili cihazla sınırlıdır. Firmanın farklı cihazlarına ait satışları SarrafPro panelinden görüntüleyin. Cihazdaki bekleyen satış detayında mali iptal işlemi bulunmaz. Tamamlanmış ve uygun satış için güncel SarrafPOS satış detayını veya SarrafPro panelinin yetkili kullanıcı akışını kullanın. Satış oluşmamış teknik kayıtların güvenli temizliği ayrı değerlendirilir.
 
 Hızlı Satış müşteri zorunluluğunu güncel sunucu hesabından alır. Toplam **36.000 TL ve üzerindeyse** gerçek TCKN/VKN zorunludur. Normal Satış kendi mevcut müşteri kuralını kullanır. Bu uygulama eşiklerini genel mevzuat veya sağlayıcı limiti olarak değerlendirmeyin. Kimlik nedeniyle reddedilen ve henüz oluşturulmamış isteği güncel müşteri bilgileriyle yeniden hazırlayabilirsiniz. Sunucuda oluşturulmuş veya sonucu bilinmeyen bir isteğin içeriğini değiştirerek tekrar göndermeyin.
 
@@ -141,6 +145,20 @@ Mali belgenin güvenli görüntüleme bağlantısı varsa işlem detayındaki **
 Stok kaydı tamamlanmadan önce bağlı stok hareketlerinin miktar, kart, şube ve tarih bilgileri doğrulanır. Önceki bir kaydın tamamlandı işaretiyle gerçek hareketleri uyuşmuyorsa işlem detayında **Kontrol Gerekli** görünür. Envanter raporunu satışın şube ve tarih kapsamıyla kontrol edin. Detayı açmak geçmiş stok hareketlerini onarmaz.
 
 ## Pavo raporuyla karşılaştırma
+
+Güncel geliştirme kaynaklarında **Mutabakat Kayıtları → Kayıt Detayı → Satış Kalemleri** bölümünden her Pavo kalemi için mevcut **Stok Kartı** seçin ve **Eşleştirmeleri Kaydet** düğmesine basın. Kart seçenekleri firmanıza aittir. Bağlantı mutabakat kaydında saklanır; yeni mali satış, tahsilat, stok kartı veya stok hareketi oluşturulmaz. Önceden seçilmiş kullanılamayan kart görünür kalır; yeni bir kartla değiştirebilir veya seçimi temizleyebilirsiniz. Eşzamanlı değişiklik uyarısında kaydı yeniden açın.
+
+Güncel geliştirme kaynaklarında web **Sarraf Pos → Mutabakat** ekranından terminali ve günü seçip **Uygula** düğmesine basın. Ekran, mevcut rapordaki Pavo ödeme ve iptal/iade adetlerini aynı kapsamın SarrafPRO kayıtlarıyla karşılaştırır. Yeni rapor için **Günlük Rapor Al** aksiyonunu kullanın. Bugün X raporu, geçmiş gün için tek tarihli rapor sorgulanır; yazdırma başlatılmaz.
+
+Fark varsa **Satış ID Gir** ile cihazdan okuduğunuz satış ID'sini sorgulayın. Satışın kalem, ödeme ve belge bilgilerini inceleyip **Mutabakata Aktar** düğmesini kullanın. Aktarılan kayıtlar **Mutabakat Kayıtları** bölümündedir. Aktarım yeni mali satış veya stok oluşturmaz; SarrafPRO ödeme adedini artırmaz ve günlük farkı kendiliğinden kapatmaz. Bulunamayan ID'yi başka bir satışın ID'siyle aynı saymayın.
+
+Ödeme adedi, birden fazla ödeme içeren bir satışta satış adedinden farklı olabilir. Adetler eşit olsa da bütün satışların işlem bazında eşleştiği sonucu çıkarılmaz. Rapor dönemi seçilen günle uyuşmuyorsa, yeni işlem rapordan sonra gerçekleşmişse veya sayaç doğrulanamıyorsa raporu yenileyin ve veriyi kontrol edin.
+
+Güncel geliştirme kaynaklarında SarrafPOS **Raporlar** ekranından **Geçmiş Tarihli Rapor** seçip tek bir gün belirleyin ve **Raporu Getir** düğmesine basın. Bu sorgu Pavo'nun `ZReportWithDateTime` türünü ve `ReportDate` alanını kullanır. Tarih aralığıyla yeni rapor istenmez. Komutun gönderilmesi raporun hazır olduğu anlamına gelmez. **Durumu Kontrol Et** mevcut isteğin sonucunu okur. Başarılı raporu **Raporu Aktar** ile mutabakat ekranına taşıyabilirsiniz; bu işlem yeni satış veya stok oluşturmaz.
+
+Yeni SarrafPOS geliştirme kaynaklarında Pavo'nun güvenli hata açıklaması rapor durumunda gösterilir ve özet satırları mevcut rapor grubuyla birlikte sunulur. Kesin tarih veya istek doğrulama hatasında formu düzeltebilirsiniz. Cevabı henüz gelmeyen rapor satış yapılmış gibi değerlendirilmez; eski rapor kaydı silinmeden yeni salt okunur rapor istenebilir. Cihazın gerçek meşgul cevabı ayrıca değerlendirilir.
+
+Günlük toplam raporu, bütün satışların ayrı ayrı kaydı anlamına gelmez. Referansı bilinen satışlar sorgulanabilir; cihazda olup SarrafPro'da bulunmayan satışların keşfi için tamamlanmış satış listesinin ayrıca sağlanması gerekir. Özet rapordan eksik satışın kimliğini veya kalemlerini üretmeyin. Ayrıntılı liste ve diğer uygulama kapsamı doğrulanmadan bütün cihaz satışları eşitlendi sonucu çıkarmayın.
 
 Sarraf Pos ekranındaki **Mutabakat** bölümünü açın. **Rapor Karşılaştır** aksiyonundan terminali, tarih aralığını ve Pavo satış raporunu JSON olarak seçin. Ekran en fazla 31 günlük, 1.000 satış içeren ve 1 MB büyüklüğündeki raporları karşılaştırır.
 

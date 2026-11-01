@@ -72,6 +72,12 @@
             "pages": [
               "guides/pavo-pos-odeme-durumlari"
             ]
+          },
+          {
+            "group": "Veri Aktarımı",
+            "pages": [
+              "guides/soket-mikro-adres"
+            ]
           }
         ]
       },
