@@ -146,6 +146,10 @@ curl -X POST 'https://api.sarraf.pro/v1/invoices/preview' \
 | `totals` | Fatura kesildiğinde oluşacak tutar özeti |
 | `lines[]` | Kalem satırları — alan anlamları [Faturalar](/api-reference/faturalar) sayfasındaki kalem tablosuyla aynıdır |
 
+<Note>
+  E-fatura kanalı, alıcının TCKN veya VKN'sine ait aktif e-fatura alıcı etiketiyle belirlenir. Son bir gün içinde sorgulanmış mükellef bilgisi önbellekten kullanılabilir; süre dolduğunda sorgu yenilenir. TCKN kullanan şahıs işletmeleri de bu kontrole dahildir.
+</Note>
+
 ## `POST /v1/invoices` — fatura oluşturma ve gönderimi
 
 ### Örnek istek

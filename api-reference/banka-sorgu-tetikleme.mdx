@@ -38,6 +38,8 @@ curl -X POST 'https://api.sarraf.pro/v1/bank-queries' \
 - Zamanlanmış görevin kilit mekanizması korunur: o anda başka bir sorgu tarafından işlenen hesap `skipped` döner; kilit ve dilim muhasebesi bozulmaz.
 - Devam eden sorgu tamamlanmadan aynı hesapta ikinci sorgu başlatılmaz. Yarım kalan sorgunun koruması süreli olarak sona erer; tekrar sorgulamadan önce güncel hareketleri kontrol edin. Geciken eski sonuç, daha yeni sorgunun kaydettiği sonucu değiştirmez.
 - Hesap bazında hata (banka reddi, entegrasyon sorunu vb.) isteği batırmaz; ilgili hesabın `status`/`message` alanına yazılır.
+- Ziraat sorgusunda seçilen tarih aralığında hareket bulunmaması başarılı sonuçtur. Yeni hareket sayısı `0` olur; sağlayıcının güncel bakiye döndürmediği alt hesaplarda mevcut bakiye ve son hareket zamanı korunur.
+- Bağlantı, zaman aşımı ve kimlik/yetki sorunları `failed` sonucudur. Bir Ziraat bağlantısının bazı alt hesapları başarılı, bazıları hatalıysa başarılı alt hesapların hareketleri kaydedilir; bağlantının sonucu yine `failed` olur.
 
 ### Cevap — `200`
 

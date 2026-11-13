@@ -51,11 +51,15 @@ Hızlı Satış kalemlerinin altında işçilik dahil satış toplamı gösteril
 
 Tanımın `defaultLaborValue` alanı ham TL işçilik veya yüzde oranını korur. Yeni fiyatın HTTP yanıtı veya eski socket olayıyla ezilmesini önleyin. Kur'a bağlı ödeme gövdesi yalnız `itemId` ve `laborValue` taşır; fiyat, artırım ve yuvarlama kuralı gönderilmez. Kaydedilmiş aynı işlem isteği canlı fiyat değişiminde yeniden fiyatlandırılmaz; mevcut `requestId` ve gövde korunur.
 
-### Birden fazla seçim ve adet
+### Adet, tutar ve satış özeti
 
-**Hızlı Satış Tanımları → Kalem Seçimi** içindeki **Tek Kalem / Birden Fazla Kalem** tercihi `allowMultipleSelection` alanıyla yönetilir. **Birden Fazla Kalem** `true`, **Tek Kalem** `false` değeridir. Yeni ekranda veya bu alanı olmayan eski tanımda varsayılanı açıktır. Mevcut ekranın güncellemesinde alan gönderilmezse kayıtlı tercih korunur; değiştirmek için açıkça `true` veya `false` gönderin. Tek kalem seçiliyse cihaz **Devam** düğmesini göstermez; bir kaleme dokunduğunuzda satış adedini sorup hesap adımına geçer. API, tekli seçimli ekranda birden fazla kalemi `quick_sale_single_selection_required` ile reddeder. Bir kalemin adedi birden fazla olabilir.
+Tek kalemli Kuyum Satış akışında Hızlı Satış'tan ürünü seçin. **Adeti Atla** açıkken ürün bir adetle tutar ve işçilik ekranına geçer. Kapalıysa adedi girin.
 
-**Hızlı Satış Tanımları → Özeti Atla** seçeneğini açarsanız müşteri seçimi veya bilgileri tamamlanınca 4. adım Satış Özeti gösterilmeden ödeme başlar. Kapalıysa mevcut özet ekranını kullanırsınız. `skipSummary` varsayılan `false` değerindedir; eski tanımlar kendiliğinden değişmez. Müşteri zorunluluğu, güncel fiyat ve güvenli ödeme kontrolleri her iki durumda uygulanır. Bu seçeneği destekleyen güncel SarrafPOS sürümünü kullanın.
+Sabit fiyatlı üründe ürün tutarını ve işçiliği ayrı düzenleyin. Kur'a bağlı üründe tutar, piyasa fiyatına uygulanan artırım ve yuvarlama ile başlar. İşçilik, düzenlediğiniz satış tutarının içinden ayrılır. Birden fazla adette ekrandaki birim tutarlar adetle çarpılır.
+
+**Özeti Atla** açıkken müşteri seçimi veya bilgileri tamamlanınca ödeme başlar. Kapalıysa satış özetini görüp ödemeyi başlatın. Bu tercihler ilgili SarrafPOS sürümü ve güncel Hızlı Satış tanımıyla çalışır.
+
+Önceki çok kalemli SarrafPOS sürümleri kayıtlı kalem seçimi tercihlerini kullanır.
 
 Kalem isteğinde `quantity` pozitif güvenli tam sayıdır; verilmezse `1` kabul edilir. Ürün tutarı ve TL işçilik bir adet için, yüzde işçilik birim toplamına uygulanacak oran olarak gönderilir. Harem fiyatı, artırım, yuvarlama ve işçilik önce bir adet için hesaplanır; sonra parasal toplamlar ve miktarlar adetle çarpılır. Sepet toplamında yeniden yuvarlama yapılmaz.
 
@@ -102,6 +106,10 @@ Sonucu gelmeyen hızlı satış, yalnız 60 saniye geçtiği için otomatik sili
 
 Core kaydının silme uygunluğu sunucuda yeniden doğrulanır. Sürenin dolması tek başına silme yetkisi vermez. Ödeme, belge, stok veya devam eden komut nedeniyle silme engellenirse neden ekranda görünür.
 
+## Satış faturasını görüntüleme
+
+SarrafPro POS satış detayında **Ödeme ve Belge → Mali Belge** bölümünü açın. Demo olmayan terminalin fatura kartında **Belgeyi görüntüle** ile faturayı SarrafPro içinde açın veya **PDF indir** ile dosyayı indirin. Bu seçenekler belge numarası bulunan E-Fatura ve E-Arşiv kayıtlarında kullanılabilir.
+
 ## İptal sonucu
 
 SarrafPOS 1.0.17 geliştirme sürümünde **Satışlar → Satış detayı → Satışı İptal Et** yolunu kullanabilirsiniz. İşlem onayından sonra Pavo iptal ekranını tamamlayın. Aksiyon yalnız iptale uygun, onaylı ve stok kaydı tamamlanmış kendi cihaz satışınızda görünür. Cihaz bağlantısı gerekir; bu özellik çevrimdışı iptal başlatmaz.
@@ -128,7 +136,7 @@ Hızlı Satış müşteri zorunluluğunu güncel sunucu hesabından alır. Topla
 
 ## Temel müşteri kartı
 
-**Hızlı Satış → Ürün Seç → Sepeti Doğrula → Devam** sonrasında toplam 36.000 TL altındaysa sepet üzerinde açılan kısa pencereden **Müşteri Bilgisi Gir / Nihai Müşteri** seçimini yapın. Nihai Müşteri seçimi, **Özeti Atla** kapalıysa satış özetine; açıksa doğrudan ödemeye geçirir. Müşteri Bilgisi Gir seçeneğinde TCKN paylaşılmadan da ad soyad, iletişim ve adres girilebilir; verilen bilgiler satışta korunur. Kimlik paylaşılmayan farklı kişiler aynı müşteri kartında birleştirilmez.
+Tek kalemli Kuyum Satış'ta **Hızlı Satış → Ürün Seç → Tutar ve İşçilik → Devam** sonrasında toplam 36.000 TL altındaysa açılan kısa pencereden **Müşteri Bilgisi Gir / Nihai Müşteri** seçimini yapın. Nihai Müşteri seçimi, **Özeti Atla** kapalıysa satış özetine; açıksa doğrudan ödemeye geçirir. Müşteri Bilgisi Gir seçeneğinde TCKN paylaşılmadan da ad soyad, iletişim ve adres girilebilir; verilen bilgiler satışta korunur. Kimlik paylaşılmayan farklı kişiler aynı müşteri kartında birleştirilmez.
 
 Gerçek TCKN/VKN girip **Sonraki** düğmesine bastığınızda firmanızdaki müşteri kaydı sorgulanır. Kayıt yoksa veya zorunlu bilgiler eksikse formu tamamlayın. **Özeti Atla** kapalıyken bilgileri **4. adım Satış Özeti** ekranında görüp ödemeyi başlatırsınız; açıkken geçerli müşteri tamamlanınca ödeme doğrudan başlar. Toplam 36.000 TL ve üzerindeyse doğrudan zorunlu gerçek kimlik adımı açılır. Ödeme öncesi güncel fiyat toplamı bu eşiğe ulaşırsa müşteri bilgilerini tamamlamanız istenir. Farklı bir kimliğe geçtiğinizde kayıtlı müşterinin önceki bilgileri ve onayı temizlenir. Sorgu hatasında kayıt olmadığı varsayılmaz; sorguyu yeniden deneyin.
 
