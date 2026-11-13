@@ -36,6 +36,7 @@ curl -X POST 'https://api.sarraf.pro/v1/bank-queries' \
 - Aday hesaplar: şirkete ait, `bank: true`, arşivsiz ve entegrasyon tanımlı (`integrationsData`) hesaplardır.
 - Hesaplar **sırayla** sorgulanır (banka API'leri yorulmaz).
 - Zamanlanmış görevin kilit mekanizması korunur: o anda başka bir sorgu tarafından işlenen hesap `skipped` döner; kilit ve dilim muhasebesi bozulmaz.
+- Devam eden sorgu tamamlanmadan aynı hesapta ikinci sorgu başlatılmaz. Yarım kalan sorgunun koruması süreli olarak sona erer; tekrar sorgulamadan önce güncel hareketleri kontrol edin. Geciken eski sonuç, daha yeni sorgunun kaydettiği sonucu değiştirmez.
 - Hesap bazında hata (banka reddi, entegrasyon sorunu vb.) isteği batırmaz; ilgili hesabın `status`/`message` alanına yazılır.
 
 ### Cevap — `200`

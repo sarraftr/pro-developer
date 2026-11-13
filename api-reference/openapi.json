@@ -1769,7 +1769,7 @@
 			"post": {
 				"operationId": "createInvoice",
 				"summary": "Fatura oluşturma ve gönderimi",
-				"description": "Fatura oluşturur ve e-belge servisine gönderir. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — aktif bir banka hesabına bağlı, faturalandırılmamış gelen banka hareketinden. Hesap pasifse önizleme, taslak ve gönderim `409 BANK_ACCOUNT_INACTIVE` ile reddedilir. Panel ile API aynı atomik gönderim sahipliğini kullanır; eşzamanlı ikinci istek `409` alır. Daha önce faturalanmış hareket yalnız firma yöneticisinin panelden verdiği tek kullanımlık yetki sonrasında ve istekte `allowReissue: true` açık onayıyla yeniden gönderilebilir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest fatura. Tutar, şablon ve ödeme bilgisi istekte verilir.\n\nBaşarılı gönderimde **201** döner ve `invoiceId` ile fatura `GET /v1/invoices/{id}` üzerinden okunabilir. `isDraft: true` gönderildiğinde e-belge servisinde yalnız taslak oluşturulur; resmî fatura kesilmez, gönderim kilidi veya yeniden gönderim yetkisi tüketilmez, `invoiceId` ve `totals` boş döner ve yanıt **200**'dür.\n\nMükerrer gönderim koruması kaynak bazlıdır: banka hareketi zaten faturalandırılmışsa, gönderiliyorsa veya kontrol bekliyorsa 409 döner; serbest faturada aynı gün + aynı kimlik + aynı tutar için kesilmiş fatura varsa 409 döner ve `allowDuplicate: true` ile bilinçli olarak aşılabilir.",
+				"description": "Fatura oluşturur ve e-belge servisine gönderir. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — aktif bir banka hesabına bağlı, faturalandırılmamış gelen banka hareketinden. Hesap pasifse önizleme, taslak ve gönderim `409 BANK_ACCOUNT_INACTIVE` ile reddedilir. Panel ile API aynı atomik gönderim sahipliğini kullanır; eşzamanlı ikinci istek `409` alır. Daha önce faturalanmış hareket yalnız firma yöneticisinin panelden verdiği tek kullanımlık yetki sonrasında ve istekte `allowReissue: true` açık onayıyla yeniden gönderilebilir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest fatura. Tutar, şablon ve ödeme bilgisi istekte verilir.\n\nBaşarılı gönderimde **201** döner ve `invoiceId` ile fatura `GET /v1/invoices/{id}` üzerinden okunabilir. `isDraft: true` gönderildiğinde e-belge servisinde yalnız taslak oluşturulur; resmî fatura kesilmez, gönderim kilidi veya yeniden gönderim yetkisi tüketilmez, `invoiceId` ve `totals` boş döner ve yanıt **200**'dür.\n\nMükerrer gönderim koruması kaynak bazlıdır: banka hareketi zaten faturalandırılmışsa, gönderiliyorsa veya kontrol bekliyorsa 409 döner; serbest faturada aynı gün + aynı kimlik + aynı tutar için kesilmiş fatura varsa 409 döner ve `allowDuplicate: true` ile bilinçli olarak aşılabilir. Şablonda fiyatı 0 TL olarak tanımlanan ekstra kalemler, pozitif miktarlı bedelsiz satırlar olarak korunur; fiyatları, KDV tutarları ve satır toplamları 0 olur. Ana kalem, işçilik ve diğer ücretli kalemler ile fatura toplamı pozitif olmalıdır. Negatif veya geçersiz değerler bedelsiz kabul edilmez.",
 				"tags": ["Invoices"],
 				"requestBody": {
 					"required": true,
@@ -3252,7 +3252,9 @@
 								"sent",
 								"failed",
 								"review_required",
-								"deleting"
+								"deleting",
+								"cancelling",
+								"cancelled"
 							]
 						},
 						"description": "Elektronik gönderim durumu."
@@ -3299,7 +3301,7 @@
 			"post": {
 				"operationId": "createExpense",
 				"summary": "Gider pusulası oluşturma",
-				"description": "Gider pusulası oluşturur. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — aktif bir banka hesabına bağlı, resmileştirilmemiş **giden** banka hareketinden. Hesap pasifse önizleme, taslak ve oluşturma `409 BANK_ACCOUNT_INACTIVE` ile reddedilir. Hareket resmileştirilmiş olarak işaretlenir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest gider pusulası.\n\nVarsayılan olarak pusula **kesinleştirilir**: seri-sıra numarası verilir, yazdırma tarihi yazılır ve stok hareketi oluşur. `isDraft: true` gönderildiğinde kayıt oluşur ama kesinleştirilmez; bu kayıt `DELETE /v1/expenses/{id}` ile iptal edilebilir.\n\nSeri ve sıra numarası verilmezse firma ayarından üretilir ve kullanımda olmadığı doğrulanır.\n\nE-gider aktif firmada yeni kayıt electronic olur ve isDraft:true zorunludur. Aksi halde kayıt ve numara oluşturmadan 422 VERIFICATION_REQUIRED döner. Elektronik kayıt /e-document/prepare → /sms → /confirm ile gönderilir. Eski kayıtların türü değişmez.",
+				"description": "Gider pusulası oluşturur. İki kaynak desteklenir:\n\n- `source: \"bankTransaction\"` — aktif bir banka hesabına bağlı, resmileştirilmemiş **giden** banka hareketinden. Hesap pasifse önizleme, taslak ve oluşturma `409 BANK_ACCOUNT_INACTIVE` ile reddedilir. Hareket resmileştirilmiş olarak işaretlenir.\n- `source: \"manual\"` — banka hareketine bağlı olmayan serbest gider pusulası.\n\nVarsayılan olarak pusula **kesinleştirilir**: seri-sıra numarası verilir, yazdırma tarihi yazılır ve stok hareketi oluşur. `isDraft: true` gönderildiğinde kayıt oluşur ama kesinleştirilmez; bu kayıt `DELETE /v1/expenses/{id}` ile iptal edilebilir.\n\nSeri ve sıra numarası verilmezse firma ayarından üretilir ve kullanımda olmadığı doğrulanır.\n\nE-gider aktif firmada yeni kayıt electronic olur ve isDraft:true zorunludur. Aksi halde kayıt ve numara oluşturmadan 422 VERIFICATION_REQUIRED döner. Elektronik kayıt /e-document/prepare → /sms → /confirm ile gönderilir. Eski kayıtların türü değişmez. Yeni Sarraf elektronik belgeleri Customer SMS modunda oluşturulur. Firma bağlantısı doğrulandıktan sonra gerekirse Nilvera SMS sahibi otomatik Customer yapılır. Customer geçişinde aynı bağlantıyı Sarraf dışı firma kullanıyorsa E_DOCUMENT_SMS_SHARED_ACCOUNT ile kayıt oluşturmadan durur.",
 				"tags": ["Expenses"],
 				"requestBody": {
 					"required": true,
@@ -3341,7 +3343,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "Banka hareketi pasif hesaba bağlıysa kod `BANK_ACCOUNT_INACTIVE` olur. Hareket resmileştirilmiş veya aynı gün/kimlik/tutar ile pusula oluşturulmuş da olabilir (details[0] nedeni gösterir).",
+						"description": "Banka hareketi pasif hesaba bağlıysa kod `BANK_ACCOUNT_INACTIVE` olur. Hareket resmileştirilmiş veya aynı gün/kimlik/tutar ile pusula oluşturulmuş da olabilir (details[0] nedeni gösterir). E_DOCUMENT_SMS_SHARED_ACCOUNT: Customer SMS ayarı için Sarraf dışı firmayla ortak olmayan bağlantı gerekir.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3419,7 +3421,7 @@
 			"delete": {
 				"operationId": "cancelExpenseDraft",
 				"summary": "Kesinleştirilmemiş gider pusulasının iptali",
-				"description": "Kesinleştirilmemiş (taslak) gider pusulasını siler. **Kesinleştirilmiş pusula bu uçtan silinemez** ve denendiğinde `409` döner. Silme sırasında bağlı giden banka hareketi yeniden işlenebilir duruma döner. Elektronik belgede sağlayıcı taslağı da kaldırılır. Gönderilen, işlem kilidi olan veya sonucu belirsiz elektronik belge silinemez.",
+				"description": "Kesinleştirilmemiş (taslak) gider pusulasını siler. **Kesinleştirilmiş pusula bu uçtan silinemez** ve denendiğinde `409` döner. Silme sırasında bağlı giden banka hareketi yeniden işlenebilir duruma döner. Elektronik belgede sağlayıcı taslağı da kaldırılır. Kesin sağlayıcı silme onayı kalıcı kaydedildikten sonra yerel temizlik yarıda kalırsa E_DOCUMENT_DELETE_CLEANUP_REQUIRED döner; aynı DELETE yeniden çağrılarak sağlayıcıya ikinci silme isteği gönderilmeden temizlik tamamlanır. Gönderilen, işlem kilidi olan veya sağlayıcı sonucu belirsiz elektronik belge silinemez.",
 				"tags": ["Expenses"],
 				"parameters": [
 					{
@@ -3462,7 +3464,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "Kesinleştirilmiş gider pusulası iptal edilemez.",
+						"description": "Kesinleştirilmiş gider pusulası iptal edilemez. E_DOCUMENT_LOCK_LOST: İşlem sahipliği kaybedildi. E_DOCUMENT_FINANCIAL_REVIEW_REQUIRED: Bağlı stok/banka yazısının sonucu belirsizdir; kontrol tamamlanmadan işlem tekrarlanamaz.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3574,7 +3576,7 @@
 			"post": {
 				"operationId": "previewInvoice",
 				"summary": "Fatura ön hesaplama",
-				"description": "Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **Hiçbir yan etkisi yoktur:** e-belge servisine gönderim yapılmaz, veritabanına kayıt yazılmaz. `source: \"bankTransaction\"` kullanıldığında hareketin bağlı olduğu banka hesabı aktif olmalıdır; pasif hesap `409 BANK_ACCOUNT_INACTIVE` döndürür. Gövde, `POST /v1/invoices` ile aynıdır; yalnız `isDraft`, `allowDuplicate` ve `allowReissue` alanları kullanılamaz. Dönen `lines` ve `totals`, fatura kesildiğinde `GET /v1/invoices/{id}` içinde görünecek değerlerle aynı hesaba dayanır.",
+				"description": "Fatura kesilmeden önce kalemleri, fatura türünü ve toplamları hesaplar. **Hiçbir yan etkisi yoktur:** e-belge servisine gönderim yapılmaz, veritabanına kayıt yazılmaz. `source: \"bankTransaction\"` kullanıldığında hareketin bağlı olduğu banka hesabı aktif olmalıdır; pasif hesap `409 BANK_ACCOUNT_INACTIVE` döndürür. Gövde, `POST /v1/invoices` ile aynıdır; yalnız `isDraft`, `allowDuplicate` ve `allowReissue` alanları kullanılamaz. Dönen `lines` ve `totals`, fatura kesildiğinde `GET /v1/invoices/{id}` içinde görünecek değerlerle aynı hesaba dayanır. Şablonda fiyatı 0 TL olarak tanımlanan ekstra kalemler, pozitif miktarlı bedelsiz satırlar olarak korunur; fiyatları, KDV tutarları ve satır toplamları 0 olur. Ana kalem, işçilik ve diğer ücretli kalemler ile fatura toplamı pozitif olmalıdır. Negatif veya geçersiz değerler bedelsiz kabul edilmez.",
 				"tags": ["Invoices"],
 				"requestBody": {
 					"required": true,
@@ -3809,7 +3811,7 @@
 			"post": {
 				"operationId": "prepareExpenseEDocument",
 				"summary": "Elektronik taslağı hazırlayın",
-				"description": "Yerel elektronik taslağı hazırlar. Gerçek satıcı kimliği, ad/adres/telefon ve kalemler doğrulanır. İçerik ve telefon kilitlenir; PDF önizlemesi file ucundan alınır.",
+				"description": "Yerel elektronik taslağı hazırlar. Gerçek satıcı kimliği, ad/adres/telefon ve kalemler doğrulanır. Türkiye cep telefonu 05xxxxxxxxx (11 hane) biçimine çevrilir. İçerik ve telefon kilitlenir; PDF önizlemesi file ucundan alınır. Eksik alanlar details içindeki field/rule, sağlayıcı retleri maskelenmiş code/message ile döner. Henüz hazırlanmamış eski yerel taslak Customer moduna hazırlanır; UUID korunur. Önceden Integrator modunda hazırlanmış içerik dönüştürülmez. SMS sahibinin otomatik Customer olarak hazırlanması autoVerify seçimine bağlı değildir.",
 				"tags": ["Expenses"],
 				"parameters": [
 					{
@@ -3846,7 +3848,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın.",
+						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın. E_DOCUMENT_ENVIRONMENT_CHANGED veya E_DOCUMENT_SMS_OWNER_MISMATCH halinde firma ile belgenin ortam/mod bilgilerini kontrol edin; belgenin kayıtlı ortamı ve hazırlanmış içeriği değiştirilmez; eski Integrator taslağı için yeni taslak gerekir. E_DOCUMENT_SMS_SHARED_ACCOUNT: Nilvera hesabı Sarraf dışı firmayla ortaktır; diğer akışı etkilemeden Customer moduna geçilemez. E_DOCUMENT_LOCK_LOST: İşlem sahipliği kaybedildi. E_DOCUMENT_FINANCIAL_REVIEW_REQUIRED: Bağlı stok/banka yazısının sonucu belirsizdir; kontrol tamamlanmadan işlem tekrarlanamaz.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3875,6 +3877,9 @@
 							}
 						}
 					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					},
 					"502": {
 						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
 						"content": {
@@ -3884,9 +3889,6 @@
 								}
 							}
 						}
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalError"
 					}
 				},
 				"requestBody": {
@@ -3905,7 +3907,7 @@
 			"post": {
 				"operationId": "sendExpenseVerificationSms",
 				"summary": "SMS gönderin",
-				"description": "Hazırlanan belgenin sabit UUID ve telefonunu kullanır. smsRetryAt dolmadan ikinci SMS gönderilmez. SMS cevabından yeni belge kimliği üretilmez.",
+				"description": "Hazırlanan belgenin sabit UUID ve 05xxxxxxxxx telefonunu kullanır. Sarraf her zaman Customer SMS akışını kullanır: altı rakamlı kodu üretir, kendi SMS hizmetiyle gönderir ve girişimi smsHistory içinde saklar. autoVerify=false olduğunda da SMS sahibi Customer kalır. Kod 180 saniye geçerlidir. smsRetryAt dolmadan ikinci SMS gönderilmez. Yalnız kesin gönderim kabulü smsSentAt ve verification_pending oluşturur. Belirsiz SMS sonrası taslağın bulunması gönderim kanıtı değildir; yeni SMS yalnız açık istemci çağrısıyla gönderilir. Hazırlanmış eski Integrator taslağı sessizce dönüştürülmez.",
 				"tags": ["Expenses"],
 				"parameters": [
 					{
@@ -3942,7 +3944,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın.",
+						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın. E_DOCUMENT_ENVIRONMENT_CHANGED veya E_DOCUMENT_SMS_OWNER_MISMATCH halinde firma ile belgenin ortam/mod bilgilerini kontrol edin; belgenin kayıtlı ortamı ve hazırlanmış içeriği değiştirilmez; eski Integrator taslağı için yeni taslak gerekir. E_DOCUMENT_SMS_HISTORY_INVALID, SMS geçmişinde geçersiz yapı olduğunu belirtir. E_DOCUMENT_SMS_SHARED_ACCOUNT: Nilvera hesabı Sarraf dışı firmayla ortaktır; diğer akışı etkilemeden Customer moduna geçilemez. E_DOCUMENT_LOCK_LOST: İşlem sahipliği kaybedildi. E_DOCUMENT_FINANCIAL_REVIEW_REQUIRED: Bağlı stok/banka yazısının sonucu belirsizdir; kontrol tamamlanmadan işlem tekrarlanamaz.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3952,7 +3954,7 @@
 						}
 					},
 					"422": {
-						"description": "E_DOCUMENT_DATA_INCOMPLETE, E_DOCUMENT_REJECTED, E_DOCUMENT_COMPANY_MISMATCH veya E_DOCUMENT_CONFIG_MISSING.",
+						"description": "E_DOCUMENT_DATA_INCOMPLETE, E_DOCUMENT_REJECTED, E_DOCUMENT_COMPANY_MISMATCH veya E_DOCUMENT_CONFIG_MISSING. E_DOCUMENT_SMS_FAILED: SMS hizmeti gönderimi kabul etmedi.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3971,8 +3973,11 @@
 							}
 						}
 					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					},
 					"502": {
-						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
+						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın. E_DOCUMENT_SMS_FAILED: SMS gönderim kabulü belirsizdir; aynı kaydı sorgulayın.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -3980,9 +3985,6 @@
 								}
 							}
 						}
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalError"
 					}
 				},
 				"requestBody": {
@@ -4001,7 +4003,7 @@
 			"post": {
 				"operationId": "confirmExpenseEDocument",
 				"summary": "Kodla onaylayıp gönderin",
-				"description": "Code doğrulamasıyla belgeyi gönderir. Geçerli UUID ve resmi numara kabul edildikten sonra stok ve banka bağlantıları kesinleştirilir. Kabul, sağlayıcı waiting/succeed/error ve GİB rapor durumundan ayrıdır.",
+				"description": "Tam 6 rakamlık code ile belgeyi gönderir. Yalnız kayıtlı smsOwner=Customer ve autoVerify=true ise code gönderilmez; sunucu geçerli kodu kullanır. Customer modunda kod 180 saniye geçerlidir ve en fazla beş hatalı deneme kabul edilir. Otomatik kod iletimi veya varsayılan telefon kullanımı recipientVerified=true oluşturmaz. Geçerli UUID ve resmi numara kabul edildikten sonra stok ve banka bağlantıları kesinleştirilir. Kabul, sağlayıcı/GİB durumundan ayrıdır. Belirsiz onay tekrarlanmaz; aynı UUID için status kullanılır.",
 				"tags": ["Expenses"],
 				"parameters": [
 					{
@@ -4038,7 +4040,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın.",
+						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın. E_DOCUMENT_ENVIRONMENT_CHANGED veya E_DOCUMENT_SMS_OWNER_MISMATCH halinde firma ile belgenin ortam/mod bilgilerini kontrol edin; belgenin kayıtlı ortamı ve hazırlanmış içeriği değiştirilmez; eski Integrator taslağı için yeni taslak gerekir. E_DOCUMENT_SMS_SHARED_ACCOUNT: Nilvera hesabı Sarraf dışı firmayla ortaktır; diğer akışı etkilemeden Customer moduna geçilemez. E_DOCUMENT_LOCK_LOST: İşlem sahipliği kaybedildi. E_DOCUMENT_FINANCIAL_REVIEW_REQUIRED: Bağlı stok/banka yazısının sonucu belirsizdir; kontrol tamamlanmadan işlem tekrarlanamaz.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4048,7 +4050,7 @@
 						}
 					},
 					"422": {
-						"description": "E_DOCUMENT_DATA_INCOMPLETE, E_DOCUMENT_REJECTED, E_DOCUMENT_COMPANY_MISMATCH veya E_DOCUMENT_CONFIG_MISSING.",
+						"description": "E_DOCUMENT_DATA_INCOMPLETE, E_DOCUMENT_REJECTED, E_DOCUMENT_COMPANY_MISMATCH veya E_DOCUMENT_CONFIG_MISSING. E_DOCUMENT_CODE_INVALID veya E_DOCUMENT_CODE_EXPIRED: Yeni kod isteyin veya kodu kontrol edin.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4058,17 +4060,7 @@
 						}
 					},
 					"429": {
-						"description": "E_DOCUMENT_SMS_COOLDOWN. smsRetryAt sonrasını bekleyin.",
-						"content": {
-							"application/json": {
-								"schema": {
-									"$ref": "#/components/schemas/ErrorResponse"
-								}
-							}
-						}
-					},
-					"502": {
-						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
+						"description": "E_DOCUMENT_SMS_COOLDOWN. smsRetryAt sonrasını bekleyin. E_DOCUMENT_CODE_ATTEMPTS: Beş hatalı denemeden sonra yeni kod isteyin.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4079,6 +4071,16 @@
 					},
 					"500": {
 						"$ref": "#/components/responses/InternalError"
+					},
+					"502": {
+						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/ErrorResponse"
+								}
+							}
+						}
 					}
 				},
 				"requestBody": {
@@ -4097,7 +4099,7 @@
 			"get": {
 				"operationId": "getExpenseEDocumentStatus",
 				"summary": "Durumu yenileyin",
-				"description": "Aynı UUID sorgulanır. Kabul sonrası kesilen yerel kesinleştirme, ikinci stok veya belge oluşmadan tamamlanır. Timeout/404 gönderimin reddedildiğini kanıtlamaz; review_required sonuç netleşene kadar korunur.",
+				"description": "Aynı UUID sorgulanır. Kabul sonrası kesilen yerel kesinleştirme, ikinci stok veya belge oluşmadan tamamlanır. Timeout/404 gönderimin reddedildiğini kanıtlamaz; review_required sonuç netleşene kadar korunur. Eşleşen taslak belirsiz SMS'in gönderildiğini kanıtlamaz: prepared ve E_DOCUMENT_SMS_RESULT_UNKNOWN döner, smsSentAt oluşturulmaz. Silme onayı kaydedilmiş kayıt için E_DOCUMENT_DELETE_CLEANUP_REQUIRED gösterilir; status silme yapmaz, yetkili DELETE çağrısı yerel temizliği sürdürür.",
 				"tags": ["Expenses"],
 				"parameters": [
 					{
@@ -4134,7 +4136,7 @@
 						"$ref": "#/components/responses/NotFound"
 					},
 					"409": {
-						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın.",
+						"description": "E_DOCUMENT_BUSY, E_DOCUMENT_LOCKED, E_DOCUMENT_REVIEW_REQUIRED veya E_DOCUMENT_FINALIZATION_REQUIRED. Aynı UUID ile durum kontrolü yapın. E_DOCUMENT_LOCK_LOST: İşlem sahipliği kaybedildi. E_DOCUMENT_FINANCIAL_REVIEW_REQUIRED: Bağlı stok/banka yazısının sonucu belirsizdir; kontrol tamamlanmadan işlem tekrarlanamaz.",
 						"content": {
 							"application/json": {
 								"schema": {
@@ -4163,6 +4165,9 @@
 							}
 						}
 					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					},
 					"502": {
 						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
 						"content": {
@@ -4172,9 +4177,6 @@
 								}
 							}
 						}
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalError"
 					}
 				}
 			}
@@ -4273,6 +4275,9 @@
 							}
 						}
 					},
+					"500": {
+						"$ref": "#/components/responses/InternalError"
+					},
 					"502": {
 						"description": "E_DOCUMENT_RESULT_UNKNOWN veya E_DOCUMENT_RESPONSE_INVALID. Gönderimi tekrarlamadan aynı UUID için status sorgulayın.",
 						"content": {
@@ -4282,9 +4287,6 @@
 								}
 							}
 						}
-					},
-					"500": {
-						"$ref": "#/components/responses/InternalError"
 					}
 				}
 			}
@@ -4881,6 +4883,14 @@
 					"rule": {
 						"type": "string"
 					},
+					"code": {
+						"type": "string",
+						"description": "E-gider sağlayıcısının maskelenmiş doğrulama kodu."
+					},
+					"message": {
+						"type": "string",
+						"description": "Kişisel veri, anahtar ve SMS kodu maskelenmiş doğrulama açıklaması."
+					},
 					"state": {
 						"type": "string",
 						"nullable": true
@@ -4927,7 +4937,43 @@
 							"KMTS_PROVIDER_RATE_LIMITED",
 							"KMTS_PROVIDER_RESPONSE_INVALID",
 							"KMTS_HISTORY_WRITE_FAILED",
-							"INTERNAL_ERROR"
+							"VERIFICATION_REQUIRED",
+							"E_DOCUMENT_BUSY",
+							"E_DOCUMENT_COMPANY_MISMATCH",
+							"E_DOCUMENT_CONFIG_MISSING",
+							"E_DOCUMENT_DATA_INCOMPLETE",
+							"E_DOCUMENT_DELETE_CLEANUP_REQUIRED",
+							"E_DOCUMENT_DELETE_FORBIDDEN",
+							"E_DOCUMENT_FILE_INVALID",
+							"E_DOCUMENT_FINALIZATION_REQUIRED",
+							"E_DOCUMENT_FINANCIAL_REVIEW_REQUIRED",
+							"E_DOCUMENT_INTERRUPTED",
+							"E_DOCUMENT_LOCKED",
+							"E_DOCUMENT_LOCK_LOST",
+							"E_DOCUMENT_NOT_ACCEPTED",
+							"E_DOCUMENT_NOT_PREPARED",
+							"E_DOCUMENT_OPERATION_FAILED",
+							"E_DOCUMENT_PAPER",
+							"E_DOCUMENT_PHONE_INVALID",
+							"E_DOCUMENT_REJECTED",
+							"E_DOCUMENT_RESPONSE_INVALID",
+							"E_DOCUMENT_RESULT_UNKNOWN",
+							"E_DOCUMENT_REVIEW_REQUIRED",
+							"E_DOCUMENT_SERIES_INACTIVE",
+							"E_DOCUMENT_SMS_COOLDOWN",
+							"E_DOCUMENT_SMS_RESULT_UNKNOWN",
+							"E_DOCUMENT_SOURCE_CONFLICT",
+							"E_DOCUMENT_TEMPLATE_INACTIVE",
+							"E_DOCUMENT_UUID_INVALID",
+							"INTERNAL_ERROR",
+							"E_DOCUMENT_ENVIRONMENT_CHANGED",
+							"E_DOCUMENT_SMS_OWNER_MISMATCH",
+							"E_DOCUMENT_SMS_HISTORY_INVALID",
+							"E_DOCUMENT_SMS_FAILED",
+							"E_DOCUMENT_CODE_EXPIRED",
+							"E_DOCUMENT_CODE_ATTEMPTS",
+							"E_DOCUMENT_CODE_INVALID",
+							"E_DOCUMENT_SMS_SHARED_ACCOUNT"
 						]
 					},
 					"message": {
@@ -5875,6 +5921,16 @@
 					},
 					"ozelMatrahTotal": {
 						"type": "number"
+					},
+					"ozelMatrahReason": {
+						"type": "string",
+						"nullable": true,
+						"description": "Önizlemede kaleme uygulanan özel matrah kodu (805/808)."
+					},
+					"kdvExemptionReasonCode": {
+						"type": "string",
+						"nullable": true,
+						"description": "Önizlemede kaleme uygulanan istisna kodu (230/307). Gönderimde belge başlığında taşınır."
 					},
 					"isExtra": {
 						"type": "boolean"
@@ -7202,7 +7258,23 @@
 					},
 					"exchange": {
 						"type": "number",
-						"description": "Şablonun mal türü için güncel liste fiyatı; 0 ise fiyat bulunamamıştır."
+						"description": "Mevcut material tanımlarında malzeme kuru; piyasa tanımında seçilen ürünün doğrudan satış birim fiyatı. Piyasa fiyatı bulunamazsa null.",
+						"nullable": true
+					},
+					"priceSource": {
+						"type": "string",
+						"enum": ["material", "piyasa"],
+						"description": "Fiyat hesabı. Eski tanımlarda material; Piyasa ürününde doğrudan birim fiyatı kullanılır."
+					},
+					"marketCode": {
+						"type": "string",
+						"nullable": true,
+						"description": "Piyasa ürün kodu; örneğin AYAR22. material modunda null."
+					},
+					"priceErrorCode": {
+						"type": "string",
+						"enum": ["QUOTE_NOT_FOUND", "QUOTE_UNAVAILABLE"],
+						"description": "Yalnız Piyasa fiyatı bulunamadığında döner."
 					}
 				}
 			},
@@ -7280,7 +7352,7 @@
 							},
 							"exchanges": {
 								"type": "number",
-								"description": "Has/kur değeri. Verilmezse güncel fiyat listesinden alınır."
+								"description": "material tanımında mevcut HAS/kur değeri; piyasa tanımında doğrudan pozitif birim fiyatı ve elle düzeltme. Piyasa tanımında verilmezse banka hareketi zamanında; serbest belgede belirtilen belge zamanında veya şimdi yayımlanmış son gerçek fiyat alınır. Fiyat bulunamazsa 422 döner."
 							},
 							"idNo": {
 								"type": "string",
@@ -7336,7 +7408,7 @@
 							"invoiceType": {
 								"type": "string",
 								"enum": ["OTOMATIK", "ISTISNA", "OZELMATRAH", "SATIS"],
-								"description": "Fatura türü (yalnız `source: manual`). Verilmezse veya `OTOMATIK` gönderilirse tür kalem şablonundan türetilir."
+								"description": "Fatura türü (yalnız `source: manual`). Verilmezse veya `OTOMATIK` gönderilirse açık Matrah/İstisna seçimi esas alınır; otomatik şablonlarda mevcut çıkarım kullanılır. Elle seçilen tür şablonun açık vergi seçimiyle çelişirse 422 VALIDATION_FAILED döner. Matrah'ta 808 seçili değilse 805, İstisna'da 307 seçili değilse 230 uygulanır; eski boş/0 kodlar işlemi engellemez."
 							},
 							"customerInfo": {
 								"$ref": "#/components/schemas/InvoiceCustomerInfoInput"
@@ -7373,7 +7445,7 @@
 							},
 							"exchanges": {
 								"type": "number",
-								"description": "Has/kur değeri. Verilmezse güncel fiyat listesinden alınır."
+								"description": "material tanımında mevcut HAS/kur değeri; piyasa tanımında doğrudan pozitif birim fiyatı ve elle düzeltme. Piyasa tanımında verilmezse banka hareketi zamanında; serbest belgede belirtilen belge zamanında veya şimdi yayımlanmış son gerçek fiyat alınır. Fiyat bulunamazsa 422 döner."
 							},
 							"idNo": {
 								"type": "string",
@@ -7429,7 +7501,7 @@
 							"invoiceType": {
 								"type": "string",
 								"enum": ["OTOMATIK", "ISTISNA", "OZELMATRAH", "SATIS"],
-								"description": "Fatura türü (yalnız `source: manual`). Verilmezse veya `OTOMATIK` gönderilirse tür kalem şablonundan türetilir."
+								"description": "Fatura türü (yalnız `source: manual`). Verilmezse veya `OTOMATIK` gönderilirse açık Matrah/İstisna seçimi esas alınır; otomatik şablonlarda mevcut çıkarım kullanılır. Elle seçilen tür şablonun açık vergi seçimiyle çelişirse 422 VALIDATION_FAILED döner. Matrah'ta 808 seçili değilse 805, İstisna'da 307 seçili değilse 230 uygulanır; eski boş/0 kodlar işlemi engellemez."
 							},
 							"customerInfo": {
 								"$ref": "#/components/schemas/InvoiceCustomerInfoInput"
@@ -7535,6 +7607,16 @@
 					"material": {
 						"type": "string",
 						"nullable": true
+					},
+					"priceSource": {
+						"type": "string",
+						"enum": ["material", "piyasa"],
+						"description": "Fiyat hesabı. Eski tanımlarda material; Piyasa ürününde doğrudan birim fiyatı kullanılır."
+					},
+					"marketCode": {
+						"type": "string",
+						"nullable": true,
+						"description": "Piyasa ürün kodu; örneğin AYAR22. material modunda null."
 					}
 				}
 			},
@@ -7757,7 +7839,23 @@
 					},
 					"exchange": {
 						"type": "number",
-						"description": "Şablonun mal türü için güncel liste fiyatı."
+						"description": "Mevcut material tanımlarında malzeme kuru; piyasa tanımında seçilen ürünün doğrudan alış birim fiyatı. Piyasa fiyatı bulunamazsa null.",
+						"nullable": true
+					},
+					"priceSource": {
+						"type": "string",
+						"enum": ["material", "piyasa"],
+						"description": "Fiyat hesabı. Eski tanımlarda material; Piyasa ürününde doğrudan birim fiyatı kullanılır."
+					},
+					"marketCode": {
+						"type": "string",
+						"nullable": true,
+						"description": "Piyasa ürün kodu; örneğin AYAR22. material modunda null."
+					},
+					"priceErrorCode": {
+						"type": "string",
+						"enum": ["QUOTE_NOT_FOUND", "QUOTE_UNAVAILABLE"],
+						"description": "Yalnız Piyasa fiyatı bulunamadığında döner."
 					}
 				}
 			},
@@ -7814,7 +7912,7 @@
 							},
 							"exchanges": {
 								"type": "number",
-								"description": "Has/kur değeri. Verilmezse güncel fiyat listesinden alınır."
+								"description": "material tanımında mevcut HAS/kur değeri; piyasa tanımında doğrudan pozitif birim fiyatı ve elle düzeltme. Piyasa tanımında verilmezse banka hareketi zamanında; serbest belgede belirtilen belge zamanında veya şimdi yayımlanmış son gerçek fiyat alınır. Fiyat bulunamazsa 422 döner."
 							},
 							"attribute": {
 								"type": "string",
@@ -7899,7 +7997,7 @@
 							},
 							"exchanges": {
 								"type": "number",
-								"description": "Has/kur değeri. Verilmezse güncel fiyat listesinden alınır."
+								"description": "material tanımında mevcut HAS/kur değeri; piyasa tanımında doğrudan pozitif birim fiyatı ve elle düzeltme. Piyasa tanımında verilmezse banka hareketi zamanında; serbest belgede belirtilen belge zamanında veya şimdi yayımlanmış son gerçek fiyat alınır. Fiyat bulunamazsa 422 döner."
 							},
 							"attribute": {
 								"type": "string",
@@ -8345,13 +8443,15 @@
 							"sent",
 							"failed",
 							"review_required",
-							"deleting"
+							"deleting",
+							"cancelling",
+							"cancelled"
 						]
 					},
 					"phone": {
 						"type": "string",
 						"nullable": true,
-						"description": "Hazırlanan taslağın sabit doğrulama telefonu."
+						"description": "Yeni hazırlanan taslağın 05xxxxxxxxx biçimindeki 11 haneli sabit doğrulama telefonu. Eski donmuş içerik sessizce değiştirilmez."
 					},
 					"providerStatus": {
 						"type": "string",
@@ -8378,6 +8478,14 @@
 					"errorMessage": {
 						"type": "string",
 						"nullable": true
+					},
+					"errorDetails": {
+						"type": "array",
+						"nullable": true,
+						"description": "Yalnız güvenli alan/kural ve maskelenmiş sağlayıcı hata kodu/açıklaması.",
+						"items": {
+							"$ref": "#/components/schemas/ErrorDetail"
+						}
 					},
 					"frozenAt": {
 						"type": "string",
@@ -8413,6 +8521,72 @@
 						"type": "string",
 						"format": "date-time",
 						"nullable": true
+					},
+					"smsOwner": {
+						"type": "string",
+						"nullable": true,
+						"enum": ["Integrator", "Customer"],
+						"description": "Yeni Sarraf belgelerinde Customer kullanılır; kodun elle veya otomatik girilmesi bu modu değiştirmez. Eski hazırlanmış belgelerde Integrator/null tarihsel olarak korunabilir."
+					},
+					"fallbackPhone": {
+						"type": "string",
+						"nullable": true,
+						"description": "Yeni belge oluşturulurken kaydedilen varsayılan doğrulama telefonu. Yalnız Customer modunda ve satıcının telefonu boşsa kullanılabilir."
+					},
+					"fallbackPhoneUsed": {
+						"type": "boolean",
+						"nullable": true,
+						"description": "SMS alıcısı için satıcı telefonu yerine varsayılan telefon kullanıldı mı?"
+					},
+					"autoVerify": {
+						"type": "boolean",
+						"nullable": true,
+						"description": "Customer akışında kodun confirm çağrısında sunucu tarafından iletilmesi seçimi. false olduğunda müşteriden alınan tam altı rakam gerekir. SMS sahibi her iki seçimde Customer kalır; belge kendiliğinden gönderilmez."
+					},
+					"verificationMode": {
+						"type": "string",
+						"nullable": true,
+						"enum": ["manual", "automatic"]
+					},
+					"recipientVerified": {
+						"type": "boolean",
+						"nullable": true,
+						"description": "Kabul edilen onayda satıcının kendi telefonuna gönderilen kod elle girildiğinde true olur. Otomatik kod iletimi veya varsayılan telefon kullanımında false kalır."
+					},
+					"verifiedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true,
+						"description": "Kodla gönderimin sağlayıcı tarafından kabul edildiği zaman."
+					},
+					"smsExpiresAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true,
+						"description": "Sarraf tarafından üretilen son kodun son kullanma zamanı."
+					},
+					"smsHistoryInvalid": {
+						"type": "boolean",
+						"description": "SMS geçmişinde okunamayan yapı bulunduğunda true döner; geçerli öğeler korunur."
+					},
+					"smsHistory": {
+						"type": "array",
+						"description": "Bu akışta kaydedilen SMS girişimleri. accepted gönderim hizmetinin kabulüdür; telefon teslimatı veya alıcı onayı değildir. Eski belgelere geriye dönük geçmiş üretilmez.",
+						"items": {
+							"$ref": "#/components/schemas/ExpenseSmsHistory"
+						}
+					},
+					"cancelledAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true,
+						"description": "Sağlayıcı iptalinin doğrulandığı zaman."
+					},
+					"cancellationFinalizedAt": {
+						"type": "string",
+						"format": "date-time",
+						"nullable": true,
+						"description": "İptalin bağlı envanter ve banka kayıtlarına uygulanmasının tamamlandığı zaman."
 					}
 				},
 				"required": ["environment", "uuid", "state"]
@@ -8471,16 +8645,66 @@
 						"properties": {
 							"code": {
 								"type": "string",
-								"pattern": "^\\d{4,8}$",
-								"description": "Satıcının telefonuna gelen tek kullanımlık SMS kodu. Saklanmaz ve loglanmaz."
+								"pattern": "^\\d{6}$",
+								"minLength": 6,
+								"maxLength": 6,
+								"description": "Tam 6 rakamlık SMS kodu. Yalnız eDocument.smsOwner=Customer ve autoVerify=true olan belgede atlanabilir; bu durumda data:{} gönderin. Diğer belgelerde zorunludur. İstek kodu API loguna yazılmaz; geçerli kod cevapta gösterilmez."
 							}
 						},
-						"required": ["code"],
 						"additionalProperties": false
 					}
 				},
 				"required": ["data"],
 				"additionalProperties": false
+			},
+			"ExpenseSmsHistory": {
+				"type": "object",
+				"properties": {
+					"id": {
+						"type": "string",
+						"format": "uuid"
+					},
+					"phone": {
+						"type": "string",
+						"description": "Bu girişimin gerçek SMS alıcısı, 05xxxxxxxxx biçiminde."
+					},
+					"message": {
+						"type": "string",
+						"nullable": true,
+						"description": "Gönderilen SMS metni. Belge kabul edilmeden önce geçerliliği süren veya süresi bilinmeyen kod maskelenir. Nilvera metni paylaşmıyorsa null döner."
+					},
+					"sender": {
+						"type": "string",
+						"nullable": true
+					},
+					"at": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"expiresAt": {
+						"type": "string",
+						"format": "date-time"
+					},
+					"providerId": {
+						"type": "string",
+						"nullable": true
+					},
+					"status": {
+						"type": "string",
+						"enum": ["sending", "accepted", "rejected", "unknown"]
+					},
+					"fallbackPhoneUsed": {
+						"type": "boolean"
+					},
+					"verificationMode": {
+						"type": "string",
+						"enum": ["manual", "automatic"]
+					},
+					"invalid": {
+						"type": "boolean",
+						"description": "Okunamayan öğede yalnız bu işaret bulunur."
+					}
+				}
 			}
 		},
 		"responses": {

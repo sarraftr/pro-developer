@@ -5,15 +5,23 @@ description: "Elektronik taslak, SMS doğrulaması, gönderim durumu ve PDF/XML 
 
 E-gider, firmanız için yönetim ekranından açılır. Yalnız aktivasyondan sonra oluşturulan pusulalar elektronik olur. Mevcut kağıt belgeler ve eski taslaklar türünü korur. Yeni elektronik kaydı `POST /v1/expenses` ile `isDraft: true` göndererek oluşturun. Kayıt oluşturmadan hesaplama için [Gider pusulası işlemleri](/api-reference/gider-pusulasi-olusturma) sayfasına bakın. Kimlik doğrulama ve cevap zarfı [Genel Bakış](/api-reference/genel-bakis) sayfasındadır.
 
+Firmanızda E-Gider etkinse **Konfigürasyon → Gider Pusulası Ayarları → E-Gider Ayarları** bölümünden bilinmeyen telefon numarasını ve otomatik kod tercihini girin. Konfigürasyon, banka otomasyonu ve manuel E-Gider ekranlarının ayar okuması Nilvera genel mail ayarlarına bağlı değildir. Tercihleri kaydetmek belge veya SMS göndermez.
+
 Gönderim sırası `prepare` → PDF önizlemesi → `sms` → `confirm` şeklindedir. Taslak hazırlandığında içerik ve telefon kilitlenir. İlk aşama yalnız vergisiz alım pusulasını, TRY ve döviz kuru 1 ile destekler. Has kuru kalem hesabında kullanılır; belgenin döviz kuru değildir.
 
+Yeni belgenin ortamı firmanın test modundan alınır. Sarraf SMS doğrulamasını her zaman `Customer` modunda yürütür; kodu Sarraf üretip gönderir. Firmanın varsayılan doğrulama telefonu ve otomatik kod tercihi belgeye kaydedilir. Otomatik kod tercihi kapalıyken müşteriden alınan kodu girin; SMS sahibi yine `Customer` kalır. Kayıt oluşturma ve gönderim adımları, firma bağlantısı doğrulandıktan sonra gerekirse Nilvera hesabını otomatik `Customer` moduna geçirir. Durum ve dosya okumaları mod değiştirmez.
+
+Nilvera'da genel mail ayarı bulunmadığında Customer modu açık ayar işleminin kesin kabulüyle doğrulanır. Bağlantı veya yetki hatası ve doğrulanamayan ayar sonucu belge hazırlama, SMS ve gönderim işlemlerini durdurur. Ayar ekranının açılması, belge gönderim bağlantısının doğrulandığı anlamına gelmez.
+
+Customer moduna geçiş sırasında aynı Nilvera bağlantısını Sarraf dışı bir firma da kullanıyorsa `409 E_DOCUMENT_SMS_SHARED_ACCOUNT` döner. Diğer firmanın SMS akışını etkilememek için ortak olmayan bağlantı kullanın. Önceden hazırlanmış `Integrator` taslağının içeriği dönüştürülmez; `E_DOCUMENT_SMS_OWNER_MISMATCH` alırsanız yeni taslak gerekir. Eski belgeye durum/dosya erişimi korunur. Henüz hazırlanmamış yerel taslak `prepare` sırasında aynı kimlikle Customer akışına hazırlanabilir.
+
 <Warning>
-  Gönderimin sonucu belirsizse yeni belge oluşturmayın ve onayı tekrar göndermeyin. Aynı yerel kayıt için `status` çağırın. `review_required` durumu sonuç netleşene kadar korunur. Gönderilen e-gider silinemez; iptal ve GİB rapor gönderimi sağlayıcı portalından yürütülür.
+  Gönderimin sonucu belirsizse yeni belge oluşturmayın ve onayı tekrar göndermeyin. Aynı yerel kayıt için `status` çağırın. `review_required` durumu sonuç netleşene kadar korunur. Gönderilen e-gider silinemez. Gönderilmiş pusulanın iptalini SarrafPro E-Fatura > E-Gider Pusulası ekranından başlatın; dış API'de iptal ucu bulunmaz.
 </Warning>
 
 ## `POST /v1/expenses/{id}/e-document/prepare` — taslağı hazırlayın
 
-Yerel elektronik taslağı hazırlayın. Gerçek satıcı TCKN/VKN'si, adı, adresi, cep telefonu ve kalemleri doğrulanır. Genel müşteri veya rastgele kimlik bilgisiyle elektronik gönderim yapılmaz.
+Yerel elektronik taslağı hazırlayın. Gerçek satıcı TCKN/VKN'si, adı, adresi, cep telefonu ve kalemleri doğrulanır. Yalnız `Customer` modunda, satıcının telefonu boşsa belgede kayıtlı varsayılan doğrulama numarası kullanılabilir. Hatalı telefon yerine varsayılan numara geçirilmez. Genel müşteri veya rastgele kimlik bilgisiyle elektronik gönderim yapılmaz.
 
 ```bash
 curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/prepare' \
@@ -40,7 +48,7 @@ curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-docu
       "uuid": "93f65d9f-b32a-434b-b8c7-16ba9151f307",
       "number": null,
       "state": "prepared",
-      "phone": "905321234567",
+      "phone": "05321234567",
       "frozenAt": "2026-10-09T10:00:00.000Z",
       "preparedAt": "2026-10-09T10:00:01.000Z",
       "smsSentAt": null,
@@ -64,6 +72,8 @@ curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-docu
 |---|---|---|
 | 409 | `E_DOCUMENT_PAPER` | Kağıt belge bu akışla gönderilemez |
 | 409 | `E_DOCUMENT_BUSY` / `E_DOCUMENT_REVIEW_REQUIRED` | İşlem sürüyor veya önce durum kontrolü gerekiyor |
+| 409 | `E_DOCUMENT_ENVIRONMENT_CHANGED` / `E_DOCUMENT_SMS_OWNER_MISMATCH` | Belgenin kayıtlı ortamı veya hazırlanmış SMS modu uyumsuz; eski Integrator taslağı için yeni taslak gerekir |
+| 409 | `E_DOCUMENT_SMS_SHARED_ACCOUNT` | Nilvera bağlantısı Sarraf dışı firmayla ortak; Customer için ortak olmayan bağlantı gerekir |
 | 422 | `E_DOCUMENT_DATA_INCOMPLETE` | Satıcı veya kalem bilgilerini tamamlayın |
 | 422 | `E_DOCUMENT_CONFIG_MISSING` / `E_DOCUMENT_COMPANY_MISMATCH` | Firma bağlantısı doğrulanmalıdır |
 | 502 | `E_DOCUMENT_RESULT_UNKNOWN` / `E_DOCUMENT_RESPONSE_INVALID` | Sonuç belirsiz; aynı kaydı sorgulayın |
@@ -73,6 +83,8 @@ curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-docu
 ## `POST /v1/expenses/{id}/e-document/sms` — SMS gönderin
 
 Hazırlanan belgenin sabit telefonuna doğrulama SMS'i gönderin. UUID kayıtlı pusuladan alınır; SMS cevabı yeni UUID oluşturmaz.
+
+Sarraf altı rakamlı kod üretir ve gönderim girişimini belgeye kaydeder. Kod 180 saniye geçerlidir. Otomatik kod seçimi açık veya kapalı olsa da SMS sahibi `Customer` kalır. Kapalı seçimde müşteriden aldığınız kodu `confirm` çağrısında gönderin.
 
 ```bash
 curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/sms' \
@@ -89,6 +101,8 @@ curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-docu
 
 `prepare` ile aynı zarf döner. `eDocument.state` değeri `verification_pending` olur. `smsSentAt` gönderim zamanını, `smsRetryAt` yeniden SMS gönderebileceğiniz zamanı gösterir.
 
+`eDocument.smsHistory` girişimlerin gerçek telefonunu, SMS metnini, tarihini, gönderenini, sağlayıcı kimliğini ve sonucunu taşır. `accepted`, SMS hizmetinin gönderimi kabul ettiğini belirtir; telefona teslim edildiğini veya satıcının onay verdiğini göstermez. Belge kabul edilmeden önce geçerli kod metin içinde maskelenir. Entegratörün paylaşmadığı metin veya kimlik `null` olabilir. Eski belgelere geriye dönük geçmiş eklenmez.
+
 ```json
 {
   "success": true,
@@ -100,7 +114,7 @@ curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-docu
       "environment": "test",
       "uuid": "93f65d9f-b32a-434b-b8c7-16ba9151f307",
       "state": "verification_pending",
-      "phone": "905321234567",
+      "phone": "05321234567",
       "smsSentAt": "2026-10-09T10:01:00.000Z",
       "smsRetryAt": "2026-10-09T10:04:00.000Z"
     }
@@ -113,13 +127,19 @@ curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-docu
 |---|---|---|
 | 409 | `E_DOCUMENT_NOT_PREPARED` | Önce taslağı hazırlayın |
 | 409 | `E_DOCUMENT_BUSY` / `E_DOCUMENT_REVIEW_REQUIRED` | İşlem sürüyor veya kontrol gerekiyor |
+| 409 | `E_DOCUMENT_ENVIRONMENT_CHANGED` / `E_DOCUMENT_SMS_OWNER_MISMATCH` | Firma ortamı veya SMS modu belgeyle uyuşmuyor |
+| 409 | `E_DOCUMENT_SMS_SHARED_ACCOUNT` | Nilvera bağlantısı Sarraf dışı firmayla ortak; Customer için ortak olmayan bağlantı gerekir |
+| 409 | `E_DOCUMENT_SMS_HISTORY_INVALID` | SMS geçmişinde okunamayan yapı var; yeni gönderim yapılmadı |
 | 429 | `E_DOCUMENT_SMS_COOLDOWN` | `smsRetryAt` sonrasını bekleyin |
 | 422 | `E_DOCUMENT_REJECTED` | SMS bekleme süresi veya firma SMS kotasını kontrol edin |
+| 422 / 502 | `E_DOCUMENT_SMS_FAILED` | Gönderim kabul edilmedi veya kabul sonucu belirsiz; belirsiz sonuçta aynı kaydı sorgulayın |
 | 502 | `E_DOCUMENT_RESULT_UNKNOWN` | Sonuç belirsiz; aynı kaydı sorgulayın |
 
 ## `POST /v1/expenses/{id}/e-document/confirm` — kodla onaylayın
 
 Satıcının telefonuna gelen kodla belgeyi gönderin. Gönderim kabulü resmi UUID ve numara ile kaydedildikten sonra yerel kesinleştirme, stok ve banka bağlantıları tamamlanır.
+
+Yalnız `eDocument.smsOwner: "Customer"` ve `eDocument.autoVerify: true` olan belgede `data: {}` gönderin; sunucu geçerli kodu kullanır. Bu seçim belgeyi kendiliğinden göndermez. Otomatik kod veya varsayılan telefon kullanımında `recipientVerified` değeri `false` kalır; bu işlem satıcı onayı olarak kaydedilmez.
 
 ```bash
 curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/confirm' \
@@ -130,7 +150,9 @@ curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-docu
 | Alan | Tür | Kural |
 |---|---|---|
 | `id` | string, path | SMS gönderilmiş elektronik pusula |
-| `data.code` | string | 4–8 rakam. Kod saklanmaz ve API loguna yazılmaz |
+| `data.code` | string | Tam 6 rakam. Yalnız Customer/otomatik belgede atlanabilir. İstek kodu API loguna yazılmaz; geçerli kod cevapta gösterilmez |
+
+Customer kodu 180 saniye geçerlidir. Beş hatalı denemeden sonra yeni kod isteyin. SMS metni denetim geçmişinde korunur; geçerli kod maskelenir.
 
 ### Cevap — `200`
 
@@ -160,15 +182,21 @@ curl -X POST 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-docu
 | 400 | `VALIDATION_FAILED` | Kod biçimi geçersiz |
 | 409 | `VERIFICATION_REQUIRED` | Önce SMS gönderin |
 | 409 | `E_DOCUMENT_BUSY` / `E_DOCUMENT_REVIEW_REQUIRED` | İşlem sürüyor veya sonuç belirsiz |
+| 409 | `E_DOCUMENT_LOCK_LOST` | İşlem sahipliği kaybedildi; aynı belgeyi kontrol edin |
+| 409 | `E_DOCUMENT_FINANCIAL_REVIEW_REQUIRED` | Stok/banka yazısının sonucu belirsiz; kontrol tamamlanmadan işlem tekrarlanamaz |
+| 409 | `E_DOCUMENT_ENVIRONMENT_CHANGED` / `E_DOCUMENT_SMS_OWNER_MISMATCH` | Firma ortamı veya SMS modu belgeyle uyuşmuyor |
+| 409 | `E_DOCUMENT_SMS_SHARED_ACCOUNT` | Nilvera bağlantısı Sarraf dışı firmayla ortak; Customer için ortak olmayan bağlantı gerekir |
 | 409 | `BANK_ACCOUNT_INACTIVE` | Kaynak banka hesabı pasif |
 | 422 | `E_DOCUMENT_REJECTED` | Kod yanlış, süresi dolmuş veya iş kuralı reddedildi |
+| 422 | `E_DOCUMENT_CODE_INVALID` / `E_DOCUMENT_CODE_EXPIRED` | Kodu kontrol edin veya yeni kod isteyin |
+| 429 | `E_DOCUMENT_CODE_ATTEMPTS` | Hatalı deneme sınırı aşıldı; yeni kod isteyin |
 | 502 | `E_DOCUMENT_RESULT_UNKNOWN` / `E_DOCUMENT_RESPONSE_INVALID` | Onayı tekrar göndermeden durum sorgulayın |
 
-<Warning>Kabul sonrası yerel kayıt hatasında belge `review_required` olabilir. `status`, yeni gönderim yapmadan kesinleştirmeyi tamamlar. Aynı banka hareketi için `allowDuplicate: true` ile ikinci elektronik taslak açılamaz.</Warning>
+<Warning>Kabul sonrası yerel kayıt hatasında belge `review_required` olabilir. `status`, mali işlem koruması engel değilse yeni gönderim yapmadan kesinleştirmeyi tamamlar. `E_DOCUMENT_FINANCIAL_REVIEW_REQUIRED` alınırsa otomatik yeniden denemeyi durdurun ve belgenin kontrolünü isteyin. Aynı banka hareketi için `allowDuplicate: true` ile ikinci elektronik taslak açılamaz.</Warning>
 
 ## `GET /v1/expenses/{id}/e-document/status` — durumu yenileyin
 
-Aynı UUID için gönderim kabulünü ve sağlayıcı durumunu sorgulayın. Kabul edilmiş kaydın yarım kalan yerel işlemleri mükerrer stok oluşmadan tamamlanır.
+Aynı UUID için gönderim kabulünü ve sağlayıcı durumunu sorgulayın. Kabul edilmiş kaydın yarım kalan yerel işlemleri, işlem sahipliği ve mali yazı sonucu doğrulanabildiğinde tamamlanır. Devam eden işlem `E_DOCUMENT_BUSY` döndürür. Önceki stok/banka yazısının sonucu belirsizse işlem otomatik devralınmaz.
 
 ```bash
 curl 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/status' \
@@ -209,17 +237,23 @@ curl 'https://api.sarraf.pro/v1/expenses/6ab2f0c21ae2463211cf4321/e-document/sta
 |---|---|---|
 | 404 | `RESOURCE_NOT_FOUND` | Firma kapsamındaki yerel pusula bulunamadı |
 | 409 | `E_DOCUMENT_BUSY` | Başka işlem sürüyor; daha sonra sorgulayın |
+| 409 | `E_DOCUMENT_LOCK_LOST` | İşlem sahipliği kaybedildi; aynı belgeyi kontrol edin |
+| 409 | `E_DOCUMENT_FINANCIAL_REVIEW_REQUIRED` | Önceki mali yazı doğrulanmadan durum sorgusu yerel kesinleştirmeyi tekrarlamaz |
 | 409 | `E_DOCUMENT_FINALIZATION_REQUIRED` | Kabul edildi; yerel kesinleştirme tekrar kontrol edilmelidir |
 | 502 | `E_DOCUMENT_RESULT_UNKNOWN` | Sağlayıcıya erişilemedi; sonuç bilinmiyor |
 
 | Alan | Anlam |
 |---|---|
-| `state` | Yerel işlem: `draft`, `preparing`, `prepared`, `sms_sending`, `verification_pending`, `dispatching`, `provider_accepted`, `sent`, `failed`, `review_required`, `deleting` |
+| `state` | Yerel işlem: `draft`, `preparing`, `prepared`, `sms_sending`, `verification_pending`, `dispatching`, `provider_accepted`, `sent`, `failed`, `review_required`, `deleting`, `cancelling`, `cancelled` |
 | `acceptedAt` | Gönderimin kabul edildiği zaman |
 | `finalizedAt` | Stok ve banka bağlantılarının yerelde tamamlandığı zaman |
 | `providerStatus` | `unknown`, `waiting`, `succeed`, `error`. Yerel kesinleştirmeden bağımsızdır |
 | `reportStatus` | `NotReported` veya `Reported`; GİB raporu |
-| `cancelled` | Sağlayıcı portalındaki iptal bilgisi |
+| `cancelled` | Sağlayıcıdan doğrulanan iptal bilgisi |
+| `cancelledAt` | İptalin doğrulandığı zaman; bilinmiyorsa `null` |
+| `cancellationFinalizedAt` | İptalin bağlı envanter ve banka kayıtlarına uygulanmasının tamamlandığı zaman; tamamlanmadıysa `null` |
+
+`cancelled` doğru olduğu halde `cancellationFinalizedAt` boşsa bağlı kayıtların güncellenmesi beklenir. SarrafPro E-Fatura > E-Gider Pusulası ekranından aynı pusulanın iptal işlemini tamamlayın. `status` çağrısı yeni bir iptal isteği başlatmaz veya bağlı mali kayıtları silmez. `cancelled` durumundaki belgeyi tekrar göndermeyin; belge numarası, dosyaları ve geçmişi korunur.
 
 <Note>Gönderim timeout'u sonrası belgenin sağlayıcıda henüz bulunmaması, reddedildiğini kanıtlamaz. Böyle bir kayıt `review_required` kalır; otomatik yeniden gönderim yapılmaz.</Note>
 
